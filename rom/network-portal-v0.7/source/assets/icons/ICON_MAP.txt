@@ -1,0 +1,16 @@
+NICE64 Portal icon map
+
+Menu icon field values from bridge://menu:
+
+smile  -> icon_welcome.png
+news   -> icon_headlines.png
+web    -> icon_web.png
+info   -> icon_about.png
+diag   -> icon_diagnostics.png
+folder -> icon_projects.png
+clock  -> icon_time.png
+
+Unknown or missing icon values use icon_default.png.
+
+All icons are PNG sources converted to DragonFS .sprite files by the
+libdragon Makefile.

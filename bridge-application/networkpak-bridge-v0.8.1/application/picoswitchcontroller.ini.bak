@@ -1,0 +1,7 @@
+[Timing]
+GamepadPollIntervalMs=8
+SerialWriterWaitMs=8
+MinimumPressDurationMs=0
+
+[Serial]
+BaudRate=115200

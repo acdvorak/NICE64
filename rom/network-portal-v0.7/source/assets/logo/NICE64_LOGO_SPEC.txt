@@ -1,0 +1,18 @@
+NICE64 logo asset notes
+
+Current v0.5 ROM loads the logo from PNG-derived libdragon sprites:
+
+- nice64_logo.png
+- nice64_banner.png
+
+Style goals:
+
+- transparent background
+- readable on CRT/capture
+- red/yellow/green/blue/purple NICE64 letters
+- late-1990s console online service
+
+Keep the brand text:
+
+NICE64
+Network Interconnect Controller Emulator

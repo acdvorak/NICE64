@@ -1,0 +1,8 @@
+*.log
+*.sav
+*.gb
+*.gbc
+*.mpk
+bin/
+obj/
+

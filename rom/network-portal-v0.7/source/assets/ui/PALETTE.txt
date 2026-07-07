@@ -1,0 +1,14 @@
+NICE64 Portal v0.5 palette
+
+Background:     RGB  7, 10, 28
+Panel fill:     RGB 12, 18, 45
+Panel header:   RGB 19, 28, 72
+Panel border:   RGB 55, 70,156
+Cyan accent:    RGB 28,190,210
+Text white:     RGB235,238,245
+Online green:   RGB116,255, 90
+Alert red:      RGB255,110, 92
+Highlight blue: RGB 38, 55,174
+
+Design target:
+late-1990s console online service, readable on CRT, not a terminal.
