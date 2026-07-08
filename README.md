@@ -116,3 +116,15 @@ Set these locally after download if you want to use Ask NICE64 with a private Ol
   - Regular Gold Joybus timing, open-drain line behavior, command handling, accessory CRC, Transfer Pak notes, and emulator integration guidance.
 - `docs/JOYBUS_TIMING_COMPARISON_GB_TOWER.md`
   - Logic analyzer timing comparison between a real Pokemon GB Tower capture and the NICE Transfer Pak capture.
+
+## Support the Project
+
+NICE64 is a passion project and is released completely free and open source for the Nintendo 64 community.
+
+If you found this project useful, built your own Network Pak, or simply enjoyed following its development, donations are never expected but are greatly appreciated. Contributions help offset the cost of hardware, replacement parts, flash cartridges, test equipment, and future development.
+
+**Support NICE64 via PayPal:**
+
+**https://paypal.me/melfegor**
+
+Thank you for your support, and I hope you enjoy building and experimenting with NICE64!
