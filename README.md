@@ -2,6 +2,14 @@
 
 This export contains the frozen NICE64 Network Pak firmware and the frozen NICE64 Network Pak Bridge application.
 
+## License
+
+NICE64 is released under the MIT License.
+
+My goal is for this project to be useful to the retro gaming and homebrew community. If you build something with NICE64, I'd genuinely love to hear about it. Attribution is appreciated, and contributions are always welcome.
+
+See the included `LICENSE` file for the complete license text.
+
 ## Versions
 
 - Network Pak firmware: Gold / Layer 2 stream validated
