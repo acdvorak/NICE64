@@ -318,9 +318,9 @@ Common ASCII error payloads:
 - ROM stream helper flow:
   `rom/network-portal-v0.7/source/src/main.c`
 - Bridge stream/session implementation:
-  `bridge-application/networkpak-bridge-v0.8.1/source/NetworkPakBridgeService.cs`
+  `bridge-application/nice64-bridge-v1.4.0/source/NetworkPakBridgeService.cs`
 - Smoke test examples:
-  `bridge-application/networkpak-bridge-v0.8.1/source/tests/NetworkPakLayer2Smoke/Program.cs`
+  `bridge-application/nice64-bridge-v1.4.0/source/tests/NetworkPakLayer2Smoke/Program.cs`
 
 ## Guardrails
 

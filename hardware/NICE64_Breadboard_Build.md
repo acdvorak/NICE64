@@ -32,7 +32,7 @@ The DB9 breakout used in this build exposes the following labeled pins:
 | DB9 Label | Used For | Wire Color in Prototype |
 |---|---|---|
 | DCD | Positive rail / pull-up side | Red |
-| RXD | N64 controller data/input path | White |
+| DTR | N64 controller data/input path | White |
 | GND | Ground | Black |
 
 Unused DB9 terminals are left disconnected.
@@ -56,8 +56,8 @@ This means the Pico straddles the center gap, with one side on columns C/D/E and
 
 | Step | Connection | Wire / Component | Notes |
 |---:|---|---|---|
-| 1 | DB9 RXD -> A30 | White wire | DB9 RXD enters the breadboard at row 30. |
-| 2 | B30 -> B45 | White jumper | Carries the RXD/data-side signal down the breadboard. |
+| 1 | DB9 DTR -> A30 | White wire | DB9 DTR enters the breadboard at row 30. |
+| 2 | B30 -> B45 | White jumper | Carries the DTR/data-side signal down the breadboard. |
 | 3 | C45 -> H45 | 4.7k ohm resistor | Pull-up / bias resistor path. |
 | 4 | DB9 DCD -> positive rail | Red wire | Connects DB9 DCD to the breadboard + rail. |
 | 5 | + rail row 45 -> J45 | Jumper | Connects positive rail to row 45. |
@@ -72,7 +72,7 @@ This means the Pico straddles the center gap, with one side on columns C/D/E and
 
 ```mermaid
 flowchart LR
-    DB9_RXD["DB9 RXD"] --> A30["A30"]
+    DB9_DTR["DB9 DTR"] --> A30["A30"]
     B30["B30"] --> B45["B45"]
 
     C45["C45"] --> R47K["4.7kΩ resistor"] --> H45["H45"]
@@ -97,7 +97,7 @@ flowchart LR
 3. Connect the negative rail to `A3` using a black jumper.
 4. Connect DB9 `DCD` to the positive rail using a red wire.
 5. Add a jumper from the positive rail at row 45 to `J45`.
-6. Connect DB9 `RXD` to `A30` using a white wire.
+6. Connect DB9 `DTR` to `A30` using a white wire.
 7. Add a white jumper from `B30` to `B45`.
 8. Install the 4.7k ohm resistor from `C45` to `H45`.
 9. Install the 330 ohm resistor from `E30` to `E25`.
@@ -115,7 +115,7 @@ Before powering the build:
 - [ ] Negative rail is connected to `A3`.
 - [ ] DB9 `DCD` goes to the positive rail.
 - [ ] Positive rail row 45 is connected to `J45`.
-- [ ] DB9 `RXD` goes to `A30`.
+- [ ] DB9 `DTR` goes to `A30`.
 - [ ] `B30` is jumpered to `B45`.
 - [ ] 4.7k ohm resistor is installed from `C45` to `H45`.
 - [ ] 330 ohm resistor is installed from `E30` to `E25`.

@@ -1,0 +1,8 @@
+{
+  "id": "sample-module",
+  "displayName": "Sample Module",
+  "version": "1.0.0",
+  "resourcePrefix": "sample://",
+  "assemblyPath": "bin/SampleModule.dll",
+  "moduleType": "SampleModule.SampleNetworkPakModule"
+}
