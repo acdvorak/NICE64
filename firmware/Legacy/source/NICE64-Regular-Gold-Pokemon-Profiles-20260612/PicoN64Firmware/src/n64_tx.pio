@@ -1,0 +1,40 @@
+.program n64_tx
+
+; Open-drain N64/Joybus transmitter.
+; The configured pin output value must be 0. Driving is done by changing
+; pindirs: output = pull line low, input = release line high.
+;
+; Timing assumes a 0.5 us state-machine tick:
+;   1 bit: low 1 us, high 3 us
+;   0 bit: low 3 us, high 1 us
+;   stop:  low 1 us, then release
+;
+; FIFO protocol:
+;   word 0: bit_count - 1
+;   word 1..N: response bits packed MSB-first, autopulled every 32 bits
+
+.wrap_target
+    pull block
+    mov y, osr
+    pull block
+
+bitloop:
+    out x, 1
+    jmp !x zero
+
+one:
+    set pindirs, 1 [1]
+    set pindirs, 0 [4]
+    jmp y-- bitloop
+    jmp stop
+
+zero:
+    set pindirs, 1 [5]
+    set pindirs, 0 [0]
+    jmp y-- bitloop
+
+stop:
+    set pindirs, 1 [1]
+    set pindirs, 0
+    irq 0
+.wrap

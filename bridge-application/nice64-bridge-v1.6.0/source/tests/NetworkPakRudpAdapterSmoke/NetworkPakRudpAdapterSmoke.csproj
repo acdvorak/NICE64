@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\PicoSwitchController.csproj" />
+    <None Include="..\..\NetworkPakRudpTransport.cs"
+          Link="production-host-rudp.cs" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\..\..\..\firmware\source\NICE64-Unified-Firmware-v1.1.0\PicoN64Firmware\src\nice64_network_rudp_adapter.c"
+          Link="production-firmware-adapter.c" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\..\..\..\firmware\source\NICE64-Unified-Firmware-v1.1.0\PicoN64Firmware\src\n64_controller.c"
+          Link="protected-n64-controller.c" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\..\..\..\firmware\source\NICE64-Unified-Firmware-v1.1.0\PicoN64Firmware\src\controller_state.c"
+          Link="protected-controller-state.c" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\..\..\..\firmware\source\NICE64-Unified-Firmware-v1.1.0\PicoN64Firmware\src\n64_rx_pulse.pio"
+          Link="protected-normal-rx.pio" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

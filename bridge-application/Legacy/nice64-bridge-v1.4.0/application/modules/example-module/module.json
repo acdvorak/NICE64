@@ -1,0 +1,10 @@
+{
+  "id": "example-module",
+  "displayName": "Example Module",
+  "version": "0.1.0",
+  "author": "NICE64 SDK",
+  "description": "Reference-only module package showing the minimal module shape.",
+  "resourcePrefix": "example://",
+  "defaultResource": "example://hello",
+  "contentRoot": "content"
+}

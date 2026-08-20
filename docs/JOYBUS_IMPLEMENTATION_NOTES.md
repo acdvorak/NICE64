@@ -8,7 +8,7 @@ This is not an official Nintendo specification. It is a practical description of
 
 Regular Gold source snapshot:
 
-`firmware/source/NICE64-Regular-Gold-Pokemon-Profiles-20260612/PicoN64Firmware/`
+`firmware/Legacy/source/NICE64-Regular-Gold-Pokemon-Profiles-20260612/PicoN64Firmware/`
 
 Most relevant files:
 
@@ -489,4 +489,3 @@ This is worth copying into future projects. Hardware protocol work is much easie
 - Preserve accessory CRC behavior.
 - Preserve 32-byte accessory block behavior.
 - Avoid moving web, RSS, AI, or other high-level features into firmware. That belongs to bridge applications.
-

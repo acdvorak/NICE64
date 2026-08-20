@@ -1,0 +1,5 @@
+Diagnostics Page
+
+Bridge Connected
+Stream Service Active
+Layer 2 Operational

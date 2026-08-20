@@ -2,6 +2,13 @@
 
 This document describes the frozen NICE64 Network Pak protocol used by the Network Pak firmware, Windows bridge application, and Network Portal ROM.
 
+The 32-byte Network Pak application protocol below is unchanged by Wi-Fi.
+Network Pak can use the existing USB/TCP line path or explicitly use Product
+Quick Mode over the reliable ordered UDP carrier. The carrier framing is a
+separate layer and does not change application command IDs, payloads, checksums,
+or the one-byte application sequence. TCP remains the reference path and Quick
+Mode does not silently fall back. See [WIFI_IMPLEMENTATION.md](WIFI_IMPLEMENTATION.md).
+
 The firmware is a transport relay. The PC bridge owns content generation and network/web work. The N64 ROM is a thin client that opens streams, reads chunks, and displays text.
 
 ## Architecture
