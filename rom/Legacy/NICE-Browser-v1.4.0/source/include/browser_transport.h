@@ -1,6 +1,8 @@
 #ifndef BROWSER_TRANSPORT_H
 #define BROWSER_TRANSPORT_H
 
+#include "logical_stream_reader.h"
+
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -52,6 +54,12 @@ typedef struct browser_transport_status_s
     uint32_t bytes_received;
     uint32_t block_count;
     uint32_t page_id;
+    bool bulk_capability;
+    LogicalStreamReaderMode reader_mode;
+    LogicalStreamFallback fallback;
+    uint32_t staged_blocks;
+    uint32_t legacy_read16_count;
+    bool eof;
     char canonical_url[129];
     int last_write_status;
     int last_read_status;

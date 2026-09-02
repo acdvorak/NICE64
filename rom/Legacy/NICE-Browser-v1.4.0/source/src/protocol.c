@@ -110,6 +110,7 @@ const char *nice_net_command_name(uint8_t command)
     case NICE_NET_CMD_STREAM_CHUNK: return "STREAM_CHUNK";
     case NICE_NET_CMD_STREAM_CLOSED: return "STREAM_CLOSED";
     case NICE_NET_CMD_STREAM_WRITE_ACK: return "STREAM_WRITE_ACK";
+    case NICE_NET_CMD_BULK_READY: return "BULK_READY";
     case NICE_NET_CMD_ERROR: return "ERROR";
     default: return "UNKNOWN";
     }

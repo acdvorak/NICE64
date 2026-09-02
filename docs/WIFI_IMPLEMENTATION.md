@@ -11,7 +11,7 @@ Core1. Core0 never calls CYW43/lwIP and never waits on network activity.
 Provisioning is initiated from the Bridge over USB. The Bridge sends the SSID
 and password to the firmware, association is attempted on Core1, and status
 reports include association state and the DHCP address. Credentials are stored
-by Universal Firmware v1.1.0 in its reserved flash persistence area. Clearing
+by Universal Firmware v1.2.0 in its reserved flash persistence area. Clearing
 configuration removes them. USB remains the setup, fallback, and recovery path
 if Wi-Fi or a network connection is unavailable.
 
@@ -22,9 +22,11 @@ package.
 
 The firmware line service listens on TCP port **6464**. The Bridge connects by
 manual IPv4 address and verifies the device and active personality before using
-it. One TCP client owns the session at a time. Controller state and the existing
-line-oriented control/accessory commands follow the selected USB or TCP line
-transport. Network Pak TCP is retained as the explicit reference/fallback.
+it. One TCP client owns the session at a time. Existing line-oriented control
+and accessory commands follow the selected USB or TCP line transport. Current
+wireless controller reports use the separate `LATEST_STATE` UDP delivery class
+when that delivery path is active. Network Pak TCP is retained as the explicit
+reference/fallback.
 
 There is no UDP discovery or static IPv4 provisioning in this release.
 
@@ -54,9 +56,19 @@ boundary. If Quick Mode cannot establish or fails, the error remains visible;
 the Bridge does not silently switch the operation to TCP. Reconnect creates a
 fresh session and does not reuse failed-session reliability state.
 
-`LATEST_STATE` / Fast remains architecturally reserved as delivery class 1. It
-is unsupported, unadvertised, and unselectable; no Fast buffers or UI are part
-of this release.
+The UDP service has two deliberately separate delivery classes:
+
+| Class | Name | Current use |
+|---:|---|---|
+| 0 | `RELIABLE_ORDERED` | Network Pak Quick reliable ordered carrier |
+| 1 | `LATEST_STATE` | Current wireless controller-state delivery |
+
+`LATEST_STATE` carries complete disposable controller reports with
+newest/current-state semantics. Normal updates have no per-update ACK, no
+retransmission queue, and no history or backlog reconstruction. Session and
+sequence ownership rules prevent a retired sender lifetime from regaining
+authority while allowing a legitimate new sender session. It is not a Network
+Pak carrier and does not share the reliable class-0 window.
 
 ## Validation and performance interpretation
 
@@ -90,7 +102,7 @@ recorded as deferred; it does not change the frozen RUDP tuple.
 
 ## Limitations
 
-Traffic is plaintext and intended for a trusted LAN or VPN. The release has no
-TLS, internet-facing authentication, UDP discovery, static address UI, or Fast
-mode. USB is still required for first-time provisioning, credential recovery,
-and the safest firmware-mode recovery path.
+Device traffic is plaintext and intended for a trusted LAN or VPN. The release
+has no TLS, internet-facing device service, UDP discovery, static address UI,
+or generic Fast transport UI. USB is still required for first-time
+provisioning, credential recovery, and the safest firmware-mode recovery path.

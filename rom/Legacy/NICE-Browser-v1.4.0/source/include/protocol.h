@@ -38,6 +38,7 @@ typedef enum nice_net_command_e
     NICE_NET_CMD_STREAM_CHUNK = 0xA2,
     NICE_NET_CMD_STREAM_CLOSED = 0xA3,
     NICE_NET_CMD_STREAM_WRITE_ACK = 0xA4,
+    NICE_NET_CMD_BULK_READY = 0xA5,
     NICE_NET_CMD_ERROR = 0xFF
 } nice_net_command_t;
 

@@ -1,98 +1,118 @@
-# Known Issues and Pending Limitations
+# Known Issues and Deferred Work
 
-This document separates current limitations and incompletely characterized
-behavior from features that are planned but not yet implemented. Planned work
-is not a statement that the corresponding existing manual workflow is broken.
+This document records current limitations of the NICE64 firmware v1.2.0 and
+PicoSwitchController Bridge v1.7.0 release. It does not override the supported
+workflows described in the [Bridge user guide](BRIDGE_USER_GUIDE.md).
 
-## Known Issues / Known Limitations
+## RC review dispositions
 
-### Quick Mode reconnect and transport switching
+### BR-001 — BrowserLive local-network URL policy
 
-Normal Product Quick Mode operation over Reliable UDP has been validated on
-real N64 hardware, including protected Network Pak transfers with exact CRC and
-zero reported errors/timeouts. RUDP-C is physically accepted and frozen; it is
-not considered unstable.
+**Status:** Accepted / deferred module hardening
 
-The following lifecycle transitions have not received the same level of
-repeated hardware validation:
+The optional BrowserLive module can request HTTP/HTTPS resources reachable
+from the host, including local/private-network destinations. BrowserLive and
+the NICE Browser ROM are demonstration/application-layer functionality rather
+than a hardened general-purpose browser. Browser-specific URL trust policy,
+redirect filtering, and local-network filtering are outside the current
+Bridge/Firmware release scope. This is not a core Bridge, API, transport,
+firmware, Joybus, or Pak-wire release blocker.
 
-- Quick Mode reconnect and session renewal;
-- TCP to Quick Mode handoff;
-- Quick Mode to TCP handoff;
-- repeated TCP and Quick Mode switching.
+### FW-001 — Core1 mailbox wait without timeout
 
-An intermittent connection or session-establishment timeout was observed during
-development, but it has not been established as a persistent or reliably
-reproducible defect. If reconnection or transport switching fails, reconnect or
-restart the Bridge/device, or temporarily return to TCP. TCP remains the
-reference Network Pak transport.
+**Status:** Accepted RC risk / no change without reproduction
 
-### Browser and Speed Test ROM throughput
+Static review identified that `core_transport_core1_call_core0()` has no
+timeout while waiting for the matching Core0 response generation. No occurrence
+has been observed during current hardware development or validation, and the
+review did not establish a supported lifecycle that leaves the mailbox
+permanently unserviced. Because this is part of the established Core0/Core1
+synchronization boundary, speculative timeout or recovery behavior could add
+greater lifecycle risk. Preserve current v1.2.0 behavior and revisit only if a
+reproducible mailbox-liveness failure is observed.
 
-The current Browser and Speed Test ROM/application data path was originally
-designed around Serial/USB-style Network Pak transfers. It performs many small
-16-byte request/response transactions and does not efficiently use the available
-Wi-Fi carrier capacity.
+### BR-003 — LATEST_STATE diagnostic log amplification
+
+**Status:** Resolved
+
+Sustained UDP send failures no longer generate one forced diagnostic at the
+controller reporting cadence. The Bridge reports the first failure, coalesces
+continued failures into bounded periodic summaries, and reports recovery once
+sending resumes. Healthy `LATEST_STATE` transport semantics are unchanged.
+
+The RC static review has no remaining release blocker. BR-001 remains accepted
+module-specific hardening debt, and FW-001 remains an accepted RC risk requiring
+reproduction before any synchronization change.
+
+## Network Pak application throughput
+
+The existing Browser and Speed Test ROM/application path performs many small
+16-byte request/response transactions. It therefore does not use the full
+capacity of either the TCP or Reliable UDP Quick carrier.
 
 Consequently:
 
-- current ROM performance does not represent available Wi-Fi TCP or RUDP
-  carrier throughput;
-- the Speed Test ROM can report approximately 1 KiB/s even when direct RUDP
-  carrier testing is substantially faster;
-- Browser image or resource streaming can fail or terminate early;
-- similar Browser/image failures have occurred over TCP and with earlier
-  pre-RUDP firmware, so they are not established as RUDP-specific corruption;
-- the Browser/Speed Test ROMs and associated Bridge modules need a future
-  Wi-Fi-aware bulk-transfer optimization.
+- current ROM measurements are not direct carrier-throughput measurements;
+- Browser image/resource streaming may be limited by application-level polling
+  and request granularity;
+- similar behavior can occur on TCP and Quick, so it is not evidence by itself
+  of RUDP corruption;
+- end-to-end Network Pak and ROM optimization remains deferred work.
 
-Serial/USB compatibility must remain a first-class supported option when that
-optimization is implemented.
+The frozen Quick transport parameters are UDP port 6465, window 8, physical
+flight cap 2, payload 512 bytes, RTO 40 ms, and retries 4.
 
-**RUDP carrier capability is not Network Pak or ROM end-to-end throughput.** No
-exact future application-throughput target has been selected.
+## Hardware-specific USB reliability
 
-## Planned / Not Yet Implemented
+Sustained Transfer Pak upload testing previously exposed Windows COM semaphore
+timeouts on one Pico device. A second Pico using the same firmware and current
+Bridge completed the workflow, and Wi-Fi completed the same 2 MiB upload and
+produced a working game image. The issue followed the individual Pico across
+Bridge versions and firmware reflash, so it is not classified as a v1.7.0
+Bridge release blocker.
 
-### Seamless firmware mode changes over Wi-Fi
+If a device exhibits repeated USB semaphore failures, try another known-good
+Pico or use the supported Wi-Fi content path. A cable change alone did not
+resolve the observed device-specific case.
 
-Firmware roles cannot yet be switched seamlessly through the normal Wi-Fi
-control path. USB mode-changing and setup capability remains available as
-currently implemented.
+## API scope and token provisioning
 
-The planned Bridge lifecycle is to request a firmware mode change over Wi-Fi,
-receive acknowledgement, handle the Pico reboot/disconnection, rediscover and
-reconnect, and verify the requested mode. This is planned post-release work,
-not a current confirmed bug.
+The authenticated API is optional and disabled by default. Its supported
+mutation surface is intentionally limited to firmware, accessory, Network Pak
+module, and Network Pak TCP/Quick carrier selection. USB carrier selection,
+Connect/Disconnect, content transfer, Wi-Fi provisioning, controller streaming,
+and transport tuning are not HTTP routes.
 
-### Automatic Game Boy save persistence lifecycle
+Token storage is protected for the current Windows user. Deployment and token
+provisioning remain local administrator/user responsibilities; the Bridge does
+not expose an unauthenticated token-creation endpoint. See
+[Bridge API v1](BRIDGE_API.md).
 
-Automatic ongoing `.sav` synchronization is planned but is not yet the active
-final persistence lifecycle. While the relevant Normal/Transfer Pak mode is
-active, the intended design is to track Game Boy save changes automatically.
-Before leaving that mode, it should flush pending state, verify the Bridge-side
-`.sav` update, mark the state clean, and deactivate or clear stale working
-state. This prevents save state from carrying across unrelated firmware or
-accessory modes.
+## Observation model
 
-Current manual and existing save operations are not known to be broken. Real
-Pokémon Stadium and Pokémon Crystal testing has successfully written the Game
-Boy save back to `.sav` over Wi-Fi.
+External clients use the bounded polling contract:
 
-### Automatic Controller Pak persistence lifecycle
+1. submit a mutation and receive `202 Accepted` with an operation ID;
+2. read `/api/v1/operation` until the operation is terminal;
+3. read `/api/v1/state` for authoritative settled state.
 
-The corresponding planned Controller Pak lifecycle will track dirty Pak state,
-automatically synchronize the backing `.mpk`, flush and verify before a mode or
-accessory transition, mark the state clean, deactivate or clear stale working
-state, and reload the authoritative image when activated again.
+There is no SSE, WebSocket, webhook, long-polling, event-bus, ETag, or state
+revision mechanism in v1.7.0.
 
-This is planned functionality, not a current confirmed defect. Existing manual
-Controller Pak load/save operations remain supported.
+## Deferred product work
 
-### Other planned Bridge work
+The following are outside this release:
 
-Other future concepts include GB ROM History/Favorites, Controller Pak `.mpk`
-History/Favorites, a documented Bridge API, an Android remote/controller
-client, and a headless standalone Bridge Server. These are summarized in the
-[Bridge application documentation](BRIDGE_APPLICATION.md#future-direction)
-and are not implemented in the current release.
+- Network Pak application/ROM throughput optimization;
+- broader real-hardware soak coverage across more Pico, router, and N64
+  combinations;
+- Wi-Fi provisioning mutations through HTTP;
+- remote controller streaming through HTTP;
+- content upload/download APIs;
+- a separate multi-device/headless NICE64 Server application;
+- Android/mobile application work.
+
+The desktop Bridge remains a one-Pico-per-instance application. A future server,
+if developed, will be a separate composition that may reuse the extracted
+semantic services rather than turning the desktop Bridge into a multi-device
+server.

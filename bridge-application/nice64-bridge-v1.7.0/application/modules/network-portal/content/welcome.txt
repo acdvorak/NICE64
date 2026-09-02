@@ -1,0 +1,7 @@
+NICE64 NETWORK PAK
+
+Bridge Connected
+
+Layer 2 Stream Protocol Operational
+
+Welcome to the NICE64 Network Portal.

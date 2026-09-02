@@ -1,5 +1,9 @@
 # Joybus Timing Comparison - GB Tower Capture
 
+> **Historical validation record:** This document records a specific hardware
+> timing comparison performed during NICE64 development. It is retained as
+> engineering evidence and is not the current firmware specification.
+
 Comparison between:
 
 - Real hardware: `Real PK GB Tower.csv`
@@ -130,4 +134,3 @@ For a hardware implementation, the NICE timing is workable but could be made clo
 1. Lengthening `1` low pulses by about 0.15-0.17 us.
 2. Shortening the command-to-response turnaround gap where possible.
 3. Keeping `0` low timing as-is.
-

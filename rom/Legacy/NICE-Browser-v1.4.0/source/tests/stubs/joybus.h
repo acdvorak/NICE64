@@ -1,0 +1,3 @@
+#ifndef CHECKPOINT_E_STUB_JOYBUS_H
+#define CHECKPOINT_E_STUB_JOYBUS_H
+#endif

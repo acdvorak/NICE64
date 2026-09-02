@@ -9,4 +9,7 @@ N64_INST=/n64_toolchain make clean
 N64_INST=/n64_toolchain make
 ```
 
-The Makefile produces `nice-browser-rom-v1.4.0-Release.z64`. The public release ROM is located at `rom/NICE-Browser-v1.4.0/nice-browser-rom-v1.4.0-Release.z64`. Copy it to a supported flash cartridge.
+The Makefile produces `nice-browser-rom-v1.4.0-Release.z64`. This historical
+release ROM is located at
+`rom/Legacy/NICE-Browser-v1.4.0/nice-browser-rom-v1.4.0-Release.z64`. Copy it
+to a supported flash cartridge.

@@ -1,5 +1,27 @@
 # Changelog
 
+## Universal Firmware v1.2.0 / Bridge v1.7.0 — Final Release
+
+- Promoted the hardened unified Pico 2 W firmware with `LATEST_STATE`
+  controller receive, Transfer Pak flash safety, exact previous-page replay
+  idempotency, GBFCRC verification, and the 1 MiB partition guard.
+- Completed the Bridge single-device service/state/operation architecture and
+  optional authenticated loopback API v1.
+- Added reusable Network Pak carrier ownership and public TCP/Reliable UDP
+  Quick mutation while keeping USB desktop/internal.
+- Added continuous authoritative current-state wireless controller reporting,
+  session ownership hardening, controller guard separation, and calibrated
+  analog stick ownership.
+- Fixed BR-003: sustained `LATEST_STATE` UDP send failures now use bounded
+  diagnostic coalescing instead of generating one forced log entry per report.
+- Fixed Transfer Pak runtime interference by replacing periodic `STAT` polling
+  and background `GBSDUMP` autosave with explicit lifecycle save flushes.
+- Preserved Joybus/Core0 timing, accessory protocols, Network Pak application
+  framing, and frozen RUDP wire/parameter compatibility.
+
+See [Firmware v1.2.0 changes](FIRMWARE_v1.2.0_CHANGES.md) and
+[Bridge v1.7.0 changes](BRIDGE_v1.7.0_CHANGES.md).
+
 ## Universal Firmware v1.1.0 / Bridge v1.6.0 release candidate
 
 - Added the unified Controller, Diagnostics, and Network firmware personalities.

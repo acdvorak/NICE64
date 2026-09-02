@@ -319,15 +319,15 @@ Common ASCII error payloads:
 ## Implementation References
 
 - Firmware protocol constants:
-  `firmware/source/PicoN64Firmware/src/n64_accessory.c`
+  `firmware/source/NICE64-Unified-Firmware-v1.2.0/PicoN64Firmware/src/n64_accessory.c`
 - ROM packet structure and command enum:
-  `rom/network-portal-v0.7/source/include/protocol.h`
+  `rom/Legacy/network-portal-v0.7/source/include/protocol.h`
 - ROM stream helper flow:
-  `rom/network-portal-v0.7/source/src/main.c`
+  `rom/Legacy/network-portal-v0.7/source/src/main.c`
 - Bridge stream/session implementation:
-  `bridge-application/nice64-bridge-v1.4.0/source/NetworkPakBridgeService.cs`
+  `bridge-application/nice64-bridge-v1.7.0/source/NetworkPakBridgeService.cs`
 - Smoke test examples:
-  `bridge-application/nice64-bridge-v1.4.0/source/tests/NetworkPakLayer2Smoke/Program.cs`
+  `bridge-application/nice64-bridge-v1.7.0/source/tests/NetworkPakLayer2Smoke/Program.cs`
 
 ## Guardrails
 

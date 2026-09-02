@@ -1,0 +1,10 @@
+{
+  "id": "diagnostics",
+  "displayName": "Diagnostics",
+  "version": "0.1.0",
+  "author": "NICE64",
+  "description": "Built-in diagnostics resources for validating module switching.",
+  "resourcePrefix": "diag://",
+  "defaultResource": "diag://status",
+  "contentRoot": "content"
+}

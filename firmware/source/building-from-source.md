@@ -1,7 +1,7 @@
 # Building Firmware from Source
 
 The current source is under
-`firmware/source/NICE64-Unified-Firmware-v1.1.0/PicoN64Firmware`.
+`firmware/source/NICE64-Unified-Firmware-v1.2.0/PicoN64Firmware`.
 
 Requirements:
 
@@ -14,7 +14,7 @@ Set `PICO_SDK_PATH` to the local SDK directory, ensure the Arm tools and Pico
 build tools are discoverable, then run:
 
 ```powershell
-cd firmware\source\NICE64-Unified-Firmware-v1.1.0\PicoN64Firmware
+cd firmware\source\NICE64-Unified-Firmware-v1.2.0\PicoN64Firmware
 .\build-clean-pico2w.ps1
 ```
 

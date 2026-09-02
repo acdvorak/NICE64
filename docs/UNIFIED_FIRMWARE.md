@@ -2,7 +2,7 @@
 
 ## Status and purpose
 
-Universal Firmware v1.1.0 combines the proven Controller, Standalone
+Universal Firmware v1.2.0 combines the proven Controller, Standalone
 Diagnostics, and Standalone Network personalities in one Pico 2 W image. The
 selected personality is stored in flash and applied at boot. The current
 Product Quick Mode image is build-, static-, and real-N64 validated for normal
@@ -63,8 +63,10 @@ hosts from concurrently driving the same state.
 
 The UDP service listens on port 6465. Delivery class 0 is the frozen
 `RELIABLE_ORDERED` carrier. Product Quick Mode routes only Network Pak traffic
-through that carrier. Delivery class 1, `LATEST_STATE`, remains recognized and
-reserved but unsupported, unadvertised, and unavailable to normal runtime.
+through that carrier. Delivery class 1, `LATEST_STATE`, accepts disposable,
+complete controller-state replacement with session and sequence protection. It
+uses no per-update acknowledgement, retry window, reconstruction, or backlog,
+and it is not a Network Pak carrier.
 
 ## Compatibility and validation
 
@@ -80,10 +82,10 @@ carrier defect. RUDP-C remains physically accepted and frozen.
 
 ## Deferred work
 
-The following are planned, not current firmware behavior: LATEST_STATE/Fast
-delivery, UDP discovery, static IPv4 provisioning, a documented public Bridge
-API, Android clients, headless server operation, and a stronger dirty-state and
-session-event synchronization lifecycle. Network Pak throughput investigation
-is deferred and must not be conflated with synthetic RUDP carrier throughput.
+UDP discovery, static IPv4 provisioning, Android clients, and headless server
+operation remain future work. `LATEST_STATE` controller delivery and the
+documented local Bridge API are current v1.2.0/v1.7.0 behavior. Network Pak
+throughput investigation remains separate and must not be conflated with
+synthetic RUDP carrier throughput.
 Joybus redesign, broad Core0 changes, RTC work, removable storage, and Rumble
 are not part of this release.

@@ -1,5 +1,6 @@
 #include "image_transport.h"
 
+#include "logical_stream_reader.h"
 #include "network_pak_transport.h"
 #include "protocol.h"
 
@@ -10,7 +11,8 @@
 static uint8_t g_image_buffer[IMAGE_TRANSPORT_MAX_BYTES] __attribute__((aligned(16)));
 static ImageTransportStatus g_status;
 static char g_route[24];
-static uint8_t g_sequence;
+static LogicalStreamReader g_reader;
+static char g_reader_error_detail[96];
 static surface_t g_image_surface;
 static bool g_image_surface_valid;
 
@@ -41,6 +43,56 @@ static void set_error(ImageTransportError code, const char *message)
     g_status.error = message;
 }
 
+static const char *reader_error_detail(void)
+{
+    if (g_reader.error == LOGICAL_STREAM_ERROR_BAD_SEQUENCE)
+    {
+        snprintf(g_reader_error_detail, sizeof(g_reader_error_detail),
+            "seq %u/%u q%02X/r%02X o%lu g%u b%lu",
+            (unsigned)g_reader.mismatch_expected_sequence,
+            (unsigned)g_reader.mismatch_actual_sequence,
+            (unsigned)g_reader.mismatch_request_command,
+            (unsigned)g_reader.mismatch_response_command,
+            (unsigned long)g_reader.mismatch_offset,
+            (unsigned)g_reader.mismatch_generation,
+            (unsigned long)g_reader.mismatch_stage_base);
+        debugf("Browser: image sequence mismatch expected=%u actual=%u request=0x%02X response=0x%02X offset=%lu generation=%u stageBase=%lu\n",
+            (unsigned)g_reader.mismatch_expected_sequence,
+            (unsigned)g_reader.mismatch_actual_sequence,
+            (unsigned)g_reader.mismatch_request_command,
+            (unsigned)g_reader.mismatch_response_command,
+            (unsigned long)g_reader.mismatch_offset,
+            (unsigned)g_reader.mismatch_generation,
+            (unsigned long)g_reader.mismatch_stage_base);
+        for (uint8_t i = 0u; i < g_reader.exchange_history_count; i++)
+        {
+            uint8_t index = (uint8_t)((g_reader.exchange_history_next +
+                LOGICAL_STREAM_EXCHANGE_HISTORY_COUNT -
+                g_reader.exchange_history_count + i) %
+                LOGICAL_STREAM_EXCHANGE_HISTORY_COUNT);
+            const LogicalStreamExchangeTrace *trace = &g_reader.exchange_history[index];
+            debugf("Browser: image exchange history rq=0x%02X/%u rp=0x%02X/%u offset=%lu generation=%u stageBase=%lu\n",
+                (unsigned)trace->request_command,
+                (unsigned)trace->request_sequence,
+                (unsigned)trace->response_command,
+                (unsigned)trace->response_sequence,
+                (unsigned long)trace->offset,
+                (unsigned)trace->generation,
+                (unsigned long)trace->stage_base);
+        }
+        return g_reader_error_detail;
+    }
+    if (g_reader.error == LOGICAL_STREAM_ERROR_TRANSPORT)
+    {
+        network_pak_status_t status = network_pak_get_status();
+        if (status.last_transport_error != NULL && status.last_transport_error[0] != '\0')
+        {
+            return status.last_transport_error;
+        }
+    }
+    return LogicalStreamReader_ErrorName(g_reader.error);
+}
+
 static uint16_t read_be16(const uint8_t *data)
 {
     return (uint16_t)(((uint16_t)data[0] << 8) | data[1]);
@@ -52,36 +104,8 @@ static uint32_t read_be32(const uint8_t *data)
         ((uint32_t)data[2] << 8) | data[3];
 }
 
-static void write_be32(uint8_t *data, uint32_t value)
-{
-    data[0] = (uint8_t)(value >> 24);
-    data[1] = (uint8_t)(value >> 16);
-    data[2] = (uint8_t)(value >> 8);
-    data[3] = (uint8_t)value;
-}
-
-static bool image_exchange(nice_net_command_t command, const void *payload, size_t length, nice_net_packet_t *response)
-{
-    nice_net_packet_t request;
-    nice_net_error_t error = NICE_NET_ERR_NONE;
-
-    nice_net_packet_init(&request, command, 0, ++g_sequence, payload, length);
-    if (!network_pak_exchange(&request, response, &error))
-    {
-        set_error(IMAGE_TRANSPORT_ERROR_TRANSPORT, nice_net_error_name(error));
-        return false;
-    }
-    if (response->sequence != request.sequence)
-    {
-        set_error(IMAGE_TRANSPORT_ERROR_BAD_SEQUENCE, "BAD_SEQUENCE");
-        return false;
-    }
-    return true;
-}
-
 static bool image_stream_open_once(void)
 {
-    nice_net_packet_t response;
     size_t route_length = strlen(g_route);
 
     if (route_length == 0 || route_length > NICE_NET_MAX_PAYLOAD)
@@ -89,23 +113,28 @@ static bool image_stream_open_once(void)
         set_error(IMAGE_TRANSPORT_ERROR_ROUTE_TOO_LONG, "ROUTE_TOO_LONG");
         return false;
     }
-    if (!image_exchange(NICE_NET_CMD_OPEN_STREAM, g_route, route_length, &response))
+    if (!LogicalStreamReader_Open(&g_reader, g_route))
     {
-        return false;
-    }
-    if (response.command != NICE_NET_CMD_STREAM_OPENED || response.payload_length != 10)
-    {
-        set_error(IMAGE_TRANSPORT_ERROR_BAD_OPEN_RESPONSE, "BAD_OPEN_RESPONSE");
+        set_error(IMAGE_TRANSPORT_ERROR_TRANSPORT, reader_error_detail());
         return false;
     }
 
-    g_status.stream_id = response.payload[0];
-    g_status.stream_open = g_status.stream_id != 0;
-    g_status.expected_bytes = read_be32(&response.payload[1]);
-    g_status.expected_crc32 = read_be32(&response.payload[6]);
+    g_status.stream_id = g_reader.stream_id;
+    g_status.stream_open = g_reader.open;
+    g_status.expected_bytes = g_reader.total_length;
+    g_status.expected_crc32 = g_reader.expected_crc32;
+    g_status.bulk_capability = g_reader.bulk_capability;
+    g_status.reader_mode = g_reader.mode;
+    g_status.fallback = g_reader.fallback;
+    debugf("Browser: image reader capability=%s selected=%s fallback=%s bytes=%lu route=%s\n",
+        g_reader.bulk_capability ? "yes" : "no",
+        LogicalStreamReader_ModeName(g_reader.mode),
+        LogicalStreamReader_FallbackName(g_reader.fallback),
+        (unsigned long)g_reader.total_length,
+        g_route);
     if (g_status.stream_id == 0 || g_status.expected_bytes == 0 ||
         g_status.expected_bytes > IMAGE_TRANSPORT_MAX_BYTES ||
-        response.payload[5] != NICE_NET_STREAM_CHUNK_SIZE)
+        g_reader.delivery_size != NICE_NET_STREAM_CHUNK_SIZE)
     {
         set_error(IMAGE_TRANSPORT_ERROR_BAD_STREAM_METADATA, "BAD_STREAM_METADATA");
         return false;
@@ -115,48 +144,36 @@ static bool image_stream_open_once(void)
 
 static bool image_stream_read_chunk_once(uint8_t *count)
 {
-    nice_net_packet_t response;
-    uint8_t request[5];
+    LogicalStreamReadResult result;
 
-    request[0] = g_status.stream_id;
-    write_be32(&request[1], g_status.offset);
-    if (!image_exchange(NICE_NET_CMD_READ_STREAM_CHUNK, request, sizeof(request), &response))
+    result = LogicalStreamReader_ReadNext(
+        &g_reader,
+        &g_image_buffer[g_status.offset],
+        IMAGE_TRANSPORT_MAX_BYTES - g_status.offset,
+        count);
+    if (result != LOGICAL_STREAM_READ_OK)
     {
-        return false;
-    }
-    if (response.command != NICE_NET_CMD_STREAM_CHUNK || response.payload_length < 7 ||
-        response.payload[0] != g_status.stream_id || read_be32(&response.payload[1]) != g_status.offset)
-    {
-        set_error(IMAGE_TRANSPORT_ERROR_BAD_CHUNK_RESPONSE, "BAD_CHUNK_RESPONSE");
-        return false;
-    }
-
-    *count = response.payload[5];
-    if (*count == 0 || *count > NICE_NET_STREAM_CHUNK_SIZE ||
-        response.payload_length != (uint8_t)(7u + *count) ||
-        *count > g_status.expected_bytes - g_status.offset ||
-        *count > IMAGE_TRANSPORT_MAX_BYTES - g_status.offset)
-    {
-        set_error(IMAGE_TRANSPORT_ERROR_BAD_CHUNK_LENGTH, "BAD_CHUNK_LENGTH");
+        set_error(IMAGE_TRANSPORT_ERROR_BAD_CHUNK_RESPONSE,
+            result == LOGICAL_STREAM_READ_EOF ? "UNEXPECTED_EOF" :
+            reader_error_detail());
         return false;
     }
 
-    memcpy(&g_image_buffer[g_status.offset], &response.payload[7], *count);
+    g_status.staged_blocks = g_reader.staged_blocks;
+    g_status.legacy_read16_count = g_reader.legacy_read16_count;
+    g_status.eof = g_reader.eof;
     return true;
 }
 
 static bool image_stream_close_once(void)
 {
-    nice_net_packet_t response;
-
     if (g_status.stream_id == 0)
     {
         return false;
     }
-    if (!image_exchange(NICE_NET_CMD_CLOSE_STREAM, &g_status.stream_id, 1, &response) ||
-        response.command != NICE_NET_CMD_STREAM_CLOSED)
+    if (!LogicalStreamReader_Close(&g_reader))
     {
-        set_error(IMAGE_TRANSPORT_ERROR_CLOSE_FAILED, "CLOSE_FAILED");
+        set_error(IMAGE_TRANSPORT_ERROR_CLOSE_FAILED, reader_error_detail());
         return false;
     }
     return true;
@@ -181,8 +198,21 @@ static void close_active(void)
 {
     if (g_status.stream_open && !g_status.close_attempted)
     {
+        ImageTransportError primary_error_code = g_status.error_code;
+        const char *primary_error = g_status.error;
+
         g_status.close_attempted = true;
         g_status.close_succeeded = image_stream_close_once();
+
+        /* Closing after a read failure is best-effort cleanup. If cleanup
+         * also fails, retain the failure that caused cleanup so the visible
+         * diagnostic reports the actionable root condition. */
+        if (!g_status.close_succeeded && primary_error != NULL)
+        {
+            g_status.error_code = primary_error_code;
+            g_status.error = primary_error;
+        }
+
         g_status.stream_open = false;
     }
 }
@@ -304,6 +334,7 @@ void ImageTransport_Reset(void)
     invalidate_graphics_wrapper();
     memset(g_image_buffer, 0, sizeof(g_image_buffer));
     memset(&g_status, 0, sizeof(g_status));
+    LogicalStreamReader_Init(&g_reader);
     g_status.state = IMAGE_TRANSPORT_IDLE;
     g_status.route = g_route;
     g_route[0] = '\0';

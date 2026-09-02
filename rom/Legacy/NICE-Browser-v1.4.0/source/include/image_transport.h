@@ -1,6 +1,8 @@
 #ifndef IMAGE_TRANSPORT_H
 #define IMAGE_TRANSPORT_H
 
+#include "logical_stream_reader.h"
+
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -92,6 +94,12 @@ typedef struct image_transport_status_s
     uint32_t chunk_count;
     uint32_t start_ticks;
     uint32_t elapsed_ticks;
+    bool bulk_capability;
+    LogicalStreamReaderMode reader_mode;
+    LogicalStreamFallback fallback;
+    uint32_t staged_blocks;
+    uint32_t legacy_read16_count;
+    bool eof;
     bool stream_open;
     bool close_attempted;
     bool close_succeeded;

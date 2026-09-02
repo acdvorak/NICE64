@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\..\BridgeInstanceIdentity.cs" Link="BridgeInstanceIdentity.cs" />
+    <Compile Include="..\..\BridgeApiV1Projection.cs" Link="BridgeApiV1Projection.cs" />
+    <Compile Include="..\..\BridgeStateAggregator.cs" Link="BridgeStateAggregator.cs" />
+    <Compile Include="..\..\BridgeDeviceState.cs" Link="BridgeDeviceState.cs" />
+    <Compile Include="..\..\FirmwareModeControl.cs" Link="FirmwareModeControl.cs" />
+    <Compile Include="..\..\BridgeControllerService.cs" Link="BridgeControllerService.cs" />
+    <Compile Include="..\..\BridgeControllerPakContentService.cs" Link="BridgeControllerPakContentService.cs" />
+    <Compile Include="..\..\BridgeTransferPakContentService.cs" Link="BridgeTransferPakContentService.cs" />
+    <Compile Include="..\..\GameBoyRomMetadataParser.cs" Link="GameBoyRomMetadataParser.cs" />
+    <Compile Include="..\..\AccessoryPersistenceService.cs" Link="AccessoryPersistenceService.cs" />
+    <Compile Include="..\..\BridgeNetworkPakModuleService.cs" Link="BridgeNetworkPakModuleService.cs" />
+    <Compile Include="..\..\BridgeWifiProvisioningService.cs" Link="BridgeWifiProvisioningService.cs" />
+    <Compile Include="..\..\WifiProvisioning.cs" Link="WifiProvisioning.cs" />
+    <Compile Include="..\..\BridgeOperationState.cs" Link="BridgeOperationState.cs" />
+  </ItemGroup>
+</Project>

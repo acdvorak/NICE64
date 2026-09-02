@@ -1,38 +1,52 @@
 # NICE64
 
 NICE64 connects a real Nintendo 64 controller port to a Windows Bridge through
-Pico 2 W firmware. The current release-candidate stack combines normal
+Pico 2 W firmware. The current release stack combines normal
 controller/accessory operation, Diagnostics, Network Pak, USB, Wi-Fi/TCP, and
-Product Quick Mode over reliable ordered UDP.
+Product Quick Mode over reliable ordered UDP. Bridge v1.7.0 also provides
+one-way `LATEST_STATE` wireless controller delivery and an optional local API.
 
 ## Current versions and status
 
-- **Universal Firmware:** v1.1.0 release candidate
-- **NICE64 Bridge:** v1.6.0 release candidate
+- **Universal Firmware:** v1.2.0 final release
+- **NICE64 Bridge:** v1.7.0 final release
 - **RUDP-C carrier:** physically accepted and frozen
 - **Network Pak TCP:** supported reference transport
 - **Product Quick Mode:** validated on real N64 hardware with exact protected
   Network Pak transfer CRC and zero reported errors/timeouts
-- **Gold:** not yet declared
 
 The earlier v1.4 Bridge and ROM releases remain under their existing `Legacy`
 convention. Historical Network Pak Gold and Regular/Normal Gold firmware remain
 unchanged.
+
+### Release candidate notice
+
+Universal Firmware v1.2.0 and NICE64 Bridge v1.7.0 are currently release
+candidates. The documented workflows have passed the project's current
+automated and available real-hardware validation, but a final comprehensive
+source-code review is still pending.
+
+The current builds may be used as-is for testing and normal use. Users who
+prefer a fully reviewed baseline may wish to wait for the final v1.2.0/v1.7.0
+release. Reproducible issues discovered during review or community testing are
+welcome. Please include the Firmware and Bridge versions, operating mode or
+accessory, USB or Wi-Fi connection type, steps to reproduce, and relevant debug
+information.
 
 ## Repository layout
 
 ```text
 NICE64/
 |-- bridge-application/
-|   |-- nice64-bridge-v1.6.0/
+|   |-- nice64-bridge-v1.7.0/
 |   `-- Legacy/
 |-- configuration/
 |-- docs/
 |-- examples/
 |-- firmware/
-|   |-- unified-firmware-v1.1.0/
+|   |-- unified-firmware-v1.2.0/
 |   |-- source/
-|   |   `-- NICE64-Unified-Firmware-v1.1.0/
+|   |   `-- NICE64-Unified-Firmware-v1.2.0/
 |   `-- Legacy/
 |       |-- network-pak-gold/
 |       `-- regular-gold-normal/
@@ -49,9 +63,9 @@ preserved.
 
 ## Quick start
 
-1. Flash the v1.1.0 UF2 from `firmware/unified-firmware-v1.1.0/` to a Pico 2 W.
+1. Flash the v1.2.0 UF2 from `firmware/unified-firmware-v1.2.0/` to a Pico 2 W.
 2. Start
-   `bridge-application/nice64-bridge-v1.6.0/application/PicoSwitchController.exe`.
+   `bridge-application/nice64-bridge-v1.7.0/application/PicoSwitchController.exe`.
 3. Connect over USB and select the NICE64 COM port.
 4. Provision Wi-Fi over USB and note the DHCP address.
 5. Use Controller personality for normal controller, Controller Pak, or
@@ -78,20 +92,27 @@ save data, manages Controller Pak images, and hosts Network Pak modules.
 
 The frozen reliable UDP tuple is wire version 1, RELIABLE_ORDERED class 0,
 window 8, physical cap 2, 512-byte payload, 40 ms RTO, four retransmissions, and
-UDP port 6465. LATEST_STATE/Fast remains reserved and unsupported.
+UDP port 6465. Delivery class 1, `LATEST_STATE`, carries disposable complete
+controller state with session/sequence protection; it is not a reliable event
+stream and does not change Network Pak's reliable-ordered carrier.
 
 RUDP carrier capability is not Network Pak or ROM end-to-end throughput.
 
 ## Known Issues / Validation Notes
 
 Normal Product Quick Mode operation is validated on real N64 hardware, and
-RUDP-C remains physically accepted and frozen. See [Known Issues and Pending
-Limitations](docs/KNOWN_ISSUES.md) for lifecycle validation notes, current ROM
-throughput limitations, and planned persistence work.
+RUDP-C remains physically accepted and frozen. Transfer Pak save persistence is
+event-driven in Bridge v1.7.0, eliminating periodic Bridge save polling during
+gameplay. See [Known Issues and Deferred Work](docs/KNOWN_ISSUES.md) for
+remaining lifecycle and throughput limitations.
 
 ## Documentation
 
 - [Unified Firmware](docs/UNIFIED_FIRMWARE.md)
+- [Bridge User's Guide](docs/BRIDGE_USER_GUIDE.md)
+- [Bridge API v1](docs/BRIDGE_API.md)
+- [Firmware v1.2.0 changes](docs/FIRMWARE_v1.2.0_CHANGES.md)
+- [Bridge v1.7.0 changes](docs/BRIDGE_v1.7.0_CHANGES.md)
 - [Wi-Fi implementation](docs/WIFI_IMPLEMENTATION.md)
 - [Bridge architecture and user guide](docs/BRIDGE_APPLICATION.md)
 - [Build the Bridge](docs/BUILD_BRIDGE.md)
@@ -99,7 +120,7 @@ throughput limitations, and planned persistence work.
 - [Configuration](docs/CONFIGURATION.md)
 - [Network Pak protocol](docs/NETWORK_PAK_PROTOCOL.md)
 - [Troubleshooting](docs/TROUBLESHOOTING.md)
-- [Known Issues and Pending Limitations](docs/KNOWN_ISSUES.md)
+- [Known Issues and Deferred Work](docs/KNOWN_ISSUES.md)
 - [Changelog](docs/CHANGELOG.md)
 - [Licenses and notices](docs/LICENSES.md)
 
@@ -110,7 +131,7 @@ Historical ROM documentation remains with each ROM beneath `rom/Legacy/`.
 Bridge requires the .NET 9 SDK on Windows:
 
 ```powershell
-dotnet build bridge-application/nice64-bridge-v1.6.0/source/PicoSwitchController.csproj -c Release
+dotnet build bridge-application/nice64-bridge-v1.7.0/source/PicoSwitchController.csproj -c Release
 ```
 
 Firmware requires CMake, Ninja, the Arm GNU embedded toolchain, and a compatible
@@ -131,7 +152,8 @@ N64 3.3 V to Pico VBUS, VSYS, or Pico 3V3. Hardware files remain under
   transport or release maintenance.
 - Preserve historical firmware and ROM releases.
 - Keep TCP as the explicit reference path during Quick Mode validation.
-- Do not advertise reserved LATEST_STATE/Fast behavior.
+- Keep `LATEST_STATE` scoped to disposable current controller state; do not
+  represent it as a reliable event stream or Network Pak carrier.
 - Do not compare synthetic carrier peak rates directly with real Network Pak
   application throughput.
 

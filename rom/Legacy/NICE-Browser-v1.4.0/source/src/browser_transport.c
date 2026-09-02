@@ -1,9 +1,11 @@
 #include "browser_transport.h"
 
 #include "document_loader.h"
+#include "logical_stream_reader.h"
 #include "network_pak_transport.h"
 #include "nice_document.h"
 
+#include <libdragon.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -12,15 +14,6 @@
 #define NICE_WIRE_HEADER_SIZE 16u
 #define NICE_WIRE_BLOCK_HEADER_SIZE 12u
 #define NICE_WIRE_CANONICAL_URL 10u
-
-typedef struct browser_stream_s
-{
-    bool open;
-    uint8_t id;
-    uint32_t total_length;
-    uint8_t chunk_size;
-    uint32_t expected_crc32;
-} browser_stream_t;
 
 typedef enum document_transfer_state_e
 {
@@ -36,7 +29,7 @@ typedef enum document_transfer_state_e
 } document_transfer_state_t;
 
 static BrowserTransportStatus g_status;
-static browser_stream_t g_stream;
+static LogicalStreamReader g_reader;
 static document_transfer_state_t g_document_transfer;
 static char g_document_resource[129];
 static uint8_t g_sequence;
@@ -88,6 +81,20 @@ static void set_transport_error(BrowserTransportResult result, const char *messa
     set_status(BROWSER_TRANSPORT_ERROR, result, message);
 }
 
+static void set_reader_error(BrowserTransportResult result, LogicalStreamError error)
+{
+    network_pak_status_t status = network_pak_get_status();
+    if (status.last_transport_error != NULL &&
+        (strcmp(status.last_transport_error, "NO_PAK") == 0 ||
+         strcmp(status.last_transport_error, "NO_DEVICE") == 0))
+    {
+        set_transport_error(BROWSER_ERROR_NETWORK_PAK_NOT_FOUND,
+            status.last_transport_error);
+        return;
+    }
+    set_transport_error(result, LogicalStreamReader_ErrorName(error));
+}
+
 static uint16_t read_be16(const uint8_t *data)
 {
     return (uint16_t)(((uint16_t)data[0] << 8) | (uint16_t)data[1]);
@@ -99,14 +106,6 @@ static uint32_t read_be32(const uint8_t *data)
         ((uint32_t)data[1] << 16) |
         ((uint32_t)data[2] << 8) |
         (uint32_t)data[3];
-}
-
-static void write_be32(uint8_t *data, uint32_t value)
-{
-    data[0] = (uint8_t)(value >> 24);
-    data[1] = (uint8_t)(value >> 16);
-    data[2] = (uint8_t)(value >> 8);
-    data[3] = (uint8_t)value;
 }
 
 static uint32_t crc32_update_byte(uint32_t crc, uint8_t value)
@@ -215,7 +214,6 @@ static bool run_packet_command(
 
 static bool stream_open(const char *resource)
 {
-    nice_net_packet_t response;
     size_t resource_length = strlen(resource);
 
     if (resource_length == 0 || resource_length > NICE_NET_MAX_PAYLOAD)
@@ -224,115 +222,103 @@ static bool stream_open(const char *resource)
         return false;
     }
 
-    if (!run_packet_command(NICE_NET_CMD_OPEN_STREAM, resource, resource_length, &response))
+    if (!LogicalStreamReader_Open(&g_reader, resource))
     {
+        set_reader_error(BROWSER_ERROR_STREAM_OPEN, g_reader.error);
         return false;
     }
 
-    if (response.payload_length != 10)
-    {
-        set_transport_error(BROWSER_ERROR_STREAM_OPEN, "BAD_OPEN_METADATA");
-        return false;
-    }
-
-    memset(&g_stream, 0, sizeof(g_stream));
-    g_stream.open = true;
-    g_stream.id = response.payload[0];
-    g_stream.total_length = read_be32(&response.payload[1]);
-    g_stream.chunk_size = response.payload[5];
-    g_stream.expected_crc32 = read_be32(&response.payload[6]);
     g_status.stream_opened = true;
-    g_status.expected_size = g_stream.total_length;
+    g_status.expected_size = g_reader.total_length;
+    g_status.bulk_capability = g_reader.bulk_capability;
+    g_status.reader_mode = g_reader.mode;
+    g_status.fallback = g_reader.fallback;
+    debugf("Browser: logical reader capability=%s selected=%s fallback=%s bytes=%lu\n",
+        g_reader.bulk_capability ? "yes" : "no",
+        LogicalStreamReader_ModeName(g_reader.mode),
+        LogicalStreamReader_FallbackName(g_reader.fallback),
+        (unsigned long)g_reader.total_length);
     snprintf(g_status.message, sizeof(g_status.message),
-        "OPEN ok id=%u len=%lu chunk=%u",
-        g_stream.id,
-        (unsigned long)g_stream.total_length,
-        g_stream.chunk_size);
+        "OPEN id=%u len=%lu reader=%s fallback=%s",
+        g_reader.stream_id,
+        (unsigned long)g_reader.total_length,
+        LogicalStreamReader_ModeName(g_reader.mode),
+        LogicalStreamReader_FallbackName(g_reader.fallback));
 
-    if (g_stream.id == 0 ||
-        g_stream.chunk_size == 0 ||
-        g_stream.chunk_size > NICE_NET_STREAM_CHUNK_SIZE ||
-        g_stream.total_length == 0 ||
-        g_stream.total_length > BROWSER_TRANSPORT_MAX_DOCUMENT_SIZE)
+    if (g_reader.total_length == 0 ||
+        g_reader.total_length > BROWSER_TRANSPORT_MAX_DOCUMENT_SIZE)
     {
         snprintf(g_status.message, sizeof(g_status.message),
             "BAD_STREAM_METADATA id=%u len=%lu chunk=%u max=%u",
-            g_stream.id,
-            (unsigned long)g_stream.total_length,
-            g_stream.chunk_size,
+            g_reader.stream_id,
+            (unsigned long)g_reader.total_length,
+            g_reader.delivery_size,
             BROWSER_TRANSPORT_MAX_DOCUMENT_SIZE);
         g_status.state = BROWSER_TRANSPORT_ERROR;
         g_status.result = BROWSER_ERROR_STREAM_OPEN;
         return false;
     }
 
-    set_transport_progress("begin chunk reads");
+    snprintf(g_status.message, sizeof(g_status.message),
+        "READ %s cap=%s fallback=%s",
+        LogicalStreamReader_ModeName(g_reader.mode),
+        g_reader.bulk_capability ? "yes" : "no",
+        LogicalStreamReader_FallbackName(g_reader.fallback));
     return true;
 }
 
 static bool stream_read_chunk(void)
 {
-    nice_net_packet_t response;
-    uint8_t request[5];
     uint8_t count;
-    uint32_t chunk_offset;
     uint32_t offset = g_status.bytes_received;
+    LogicalStreamReadResult result;
 
-    if (offset >= g_stream.total_length)
+    if (offset >= g_reader.total_length)
     {
         set_transport_error(BROWSER_ERROR_STREAM_READ, "READ_PAST_STREAM_END");
         return false;
     }
 
-    request[0] = g_stream.id;
-    write_be32(&request[1], offset);
-    if (!run_packet_command(NICE_NET_CMD_READ_STREAM_CHUNK, request, sizeof(request), &response))
+    result = LogicalStreamReader_ReadNext(
+        &g_reader,
+        &g_document_buffer[offset],
+        BROWSER_TRANSPORT_MAX_DOCUMENT_SIZE - offset,
+        &count);
+    if (result != LOGICAL_STREAM_READ_OK)
     {
+        if (result == LOGICAL_STREAM_READ_EOF)
+        {
+            set_transport_error(BROWSER_ERROR_STREAM_READ, "UNEXPECTED_EOF");
+        }
+        else
+        {
+            set_reader_error(BROWSER_ERROR_STREAM_READ, g_reader.error);
+        }
         return false;
     }
 
-    if (response.payload_length < 7 || response.payload[0] != g_stream.id)
-    {
-        set_transport_error(BROWSER_ERROR_STREAM_READ, "BAD_CHUNK_HEADER");
-        return false;
-    }
-
-    chunk_offset = read_be32(&response.payload[1]);
-    count = response.payload[5];
-    if (chunk_offset != offset ||
-        count == 0 ||
-        count > g_stream.chunk_size ||
-        response.payload_length != (uint8_t)(7u + count) ||
-        count > g_stream.total_length - offset ||
-        offset > BROWSER_TRANSPORT_MAX_DOCUMENT_SIZE ||
-        count > BROWSER_TRANSPORT_MAX_DOCUMENT_SIZE - offset)
-    {
-        set_transport_error(BROWSER_ERROR_STREAM_READ, "BAD_CHUNK_DATA");
-        return false;
-    }
-
-    memcpy(&g_document_buffer[offset], &response.payload[7], count);
-    g_status.bytes_received = offset + count;
+    g_status.bytes_received = g_reader.offset;
+    g_status.staged_blocks = g_reader.staged_blocks;
+    g_status.legacy_read16_count = g_reader.legacy_read16_count;
+    g_status.eof = g_reader.eof;
     return true;
 }
 
 static void stream_close(void)
 {
-    nice_net_packet_t response;
-    if (g_stream.open)
+    if (g_reader.open)
     {
-        if (!run_packet_command(NICE_NET_CMD_CLOSE_STREAM, &g_stream.id, 1, &response) &&
+        if (!LogicalStreamReader_Close(&g_reader) &&
             g_status.result == BROWSER_TRANSPORT_OK)
         {
-            set_transport_error(BROWSER_ERROR_STREAM_CLOSE, "STREAM_CLOSE_FAILED");
+            set_reader_error(BROWSER_ERROR_STREAM_CLOSE, g_reader.error);
         }
     }
-    memset(&g_stream, 0, sizeof(g_stream));
 }
 
 static void document_transfer_fail(void)
 {
-    if (g_stream.open)
+    if (g_reader.open)
     {
         g_document_transfer = DOCUMENT_TRANSFER_CLOSING;
     }
@@ -649,7 +635,7 @@ static bool decode_wire_document(void)
 void BrowserTransport_Init(void)
 {
     memset(&g_status, 0, sizeof(g_status));
-    memset(&g_stream, 0, sizeof(g_stream));
+    LogicalStreamReader_Init(&g_reader);
     g_document_transfer = DOCUMENT_TRANSFER_IDLE;
     g_sequence = 0;
     network_pak_init();
@@ -676,6 +662,12 @@ bool BrowserTransport_StartResource(const char *resource)
     g_status.bytes_received = 0;
     g_status.block_count = 0;
     g_status.page_id = 0;
+    g_status.bulk_capability = false;
+    g_status.reader_mode = LOGICAL_STREAM_READER_LEGACY;
+    g_status.fallback = LOGICAL_STREAM_FALLBACK_CAPABILITY_UNAVAILABLE;
+    g_status.staged_blocks = 0;
+    g_status.legacy_read16_count = 0;
+    g_status.eof = false;
     g_status.canonical_url[0] = '\0';
     snprintf(g_document_resource, sizeof(g_document_resource), "%s", resource);
 
@@ -711,7 +703,7 @@ void BrowserTransport_Update(void)
 
     case DOCUMENT_TRANSFER_READING:
         for (chunk_index = 0; chunk_index < BROWSER_TRANSPORT_DOCUMENT_CHUNKS_PER_UPDATE &&
-             g_status.bytes_received < g_stream.total_length; chunk_index++)
+             g_status.bytes_received < g_reader.total_length; chunk_index++)
         {
             if (!stream_read_chunk())
             {
@@ -719,7 +711,7 @@ void BrowserTransport_Update(void)
                 return;
             }
         }
-        if (g_status.bytes_received == g_stream.total_length)
+        if (g_status.bytes_received == g_reader.total_length)
         {
             set_transport_progress("all chunks received");
             g_document_transfer = DOCUMENT_TRANSFER_VALIDATING;
@@ -727,7 +719,7 @@ void BrowserTransport_Update(void)
         break;
 
     case DOCUMENT_TRANSFER_VALIDATING:
-        if (stream_crc32(g_document_buffer, g_stream.total_length) != g_stream.expected_crc32)
+        if (stream_crc32(g_document_buffer, g_reader.total_length) != g_reader.expected_crc32)
         {
             set_transport_error(BROWSER_ERROR_STREAM_READ, "STREAM_CRC_FAIL");
             document_transfer_fail();
@@ -781,7 +773,7 @@ void BrowserTransport_Cancel(void)
         return;
     }
 
-    if (g_stream.open)
+    if (g_reader.open)
     {
         stream_close();
     }

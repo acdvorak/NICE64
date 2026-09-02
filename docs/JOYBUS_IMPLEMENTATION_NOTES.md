@@ -1,5 +1,10 @@
 # NICE64 Joybus Implementation Notes
 
+> **Historical implementation note:** This document primarily describes the
+> pre-unified Regular Gold firmware and is retained for technical provenance.
+> It does not supersede the current Universal Firmware v1.2.0 architecture or
+> current Joybus backend documentation.
+
 These notes document what the NICE64 Regular Gold firmware learned about acting like an N64 controller and accessory on the Joybus line.
 
 This is not an official Nintendo specification. It is a practical description of the working Raspberry Pi Pico implementation shipped as Regular Gold / Normal firmware. It is intended to help future NICE64 work, emulator authors, FPGA projects, or other homebrew hardware projects understand the choices that made this bridge reliable enough for controller, Controller Pak, Transfer Pak, Pokemon Profile, and GB/GBC save handling work.
@@ -488,4 +493,4 @@ This is worth copying into future projects. Hardware protocol work is much easie
 - Preserve the open-drain electrical model.
 - Preserve accessory CRC behavior.
 - Preserve 32-byte accessory block behavior.
-- Avoid moving web, RSS, AI, or other high-level features into firmware. That belongs to bridge applications.
+- Avoid moving web, RSS, or other high-level application features into firmware. That belongs to bridge applications.
