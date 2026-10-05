@@ -1,0 +1,12 @@
+{
+  "id": "speed-test",
+  "displayName": "Speed Test",
+  "version": "0.1.0",
+  "author": "NICE64",
+  "description": "Deterministic full-path Network Pak throughput test resources.",
+  "resourcePrefix": "speed://",
+  "defaultResource": "speed://16k",
+  "contentRoot": "content",
+  "minimumBridgeSdkVersion": "1.0.0",
+  "protocolVersion": 1
+}

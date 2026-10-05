@@ -1,5 +1,31 @@
 # Changelog
 
+## Universal Firmware v1.2.0 / Bridge v1.8.0 / NICE Browser v1.4.1 / Android companion
+
+- Added the accepted Android companion export with pinned HTTPS pairing,
+  Bridge/History/Controllers navigation, authoritative operation state, and
+  exactly two controller Primary values: Bridge Primary and NICE Mobile Primary.
+- Added Android USB/Bluetooth controller profiles and mapping, embedded and
+  full-screen touch controls, Accessories and Modes, and Advanced diagnostics.
+- Added Controller Blackout Mode, which keeps the NICE64 activity foregrounded
+  on a true-black OLED-friendly surface without claiming lock-screen or
+  power-button-off controller operation.
+- Preserved direct Android-to-Pico UDP `LATEST_STATE` controller delivery;
+  gameplay packets are not relayed through the Bridge HTTP API.
+- Included accepted Home/return sender reconciliation and mobile UI,
+  accessibility, lifecycle, and failure-recovery corrections.
+- Updated Bridge release identity and package metadata to v1.8.0 with no
+  firmware, Joybus, accessory protocol, Network Pak protocol, or transport-
+  parameter change.
+- Promoted NICE Browser v1.4.1 from the confirmed working Summercart v1.4.0
+  staged-bulk/carrier-response-gate lineage. The promotion changes Browser
+  release identity only and introduces no new protocol or functional behavior.
+- Universal Firmware remains v1.2.0; this release-preparation pass makes no
+  firmware change.
+
+See [Bridge v1.8.0 changes](BRIDGE_v1.8.0_CHANGES.md) and
+[Android companion](ANDROID_COMPANION.md).
+
 ## Universal Firmware v1.2.0 / Bridge v1.7.0 — Final Release
 
 - Promoted the hardened unified Pico 2 W firmware with `LATEST_STATE`

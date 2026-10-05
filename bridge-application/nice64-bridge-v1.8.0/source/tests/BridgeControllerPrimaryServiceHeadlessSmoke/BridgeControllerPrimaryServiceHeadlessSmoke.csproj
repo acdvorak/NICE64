@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\..\BridgeControllerPrimary.cs" Link="BridgeControllerPrimary.cs" />
+    <Compile Include="..\..\BridgeControllerPrimaryService.cs" Link="BridgeControllerPrimaryService.cs" />
+    <Compile Include="..\..\BridgeControllerEndpoint.cs" Link="BridgeControllerEndpoint.cs" />
+    <Compile Include="..\..\BridgeControllerEndpointProvider.cs" Link="BridgeControllerEndpointProvider.cs" />
+    <Compile Include="..\..\BridgeControllerService.cs" Link="BridgeControllerService.cs" />
+    <Compile Include="..\..\BridgeSession.cs" Link="BridgeSession.cs" />
+    <Compile Include="..\..\BridgeDeviceState.cs" Link="BridgeDeviceState.cs" />
+    <Compile Include="..\..\FirmwareModeControl.cs" Link="FirmwareModeControl.cs" />
+  </ItemGroup>
+</Project>

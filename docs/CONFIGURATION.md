@@ -1,6 +1,6 @@
 # Bridge Configuration
 
-Bridge v1.7.0 reads and updates `picoswitchcontroller.ini` beside the executable.
+Bridge v1.8.0 reads and updates `picoswitchcontroller.ini` beside the executable.
 The file is user-specific and is intentionally not distributed or tracked.
 
 ```ini

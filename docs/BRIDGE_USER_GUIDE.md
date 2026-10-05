@@ -1,4 +1,4 @@
-# NICE64 Bridge v1.7.0 User's Guide
+# NICE64 Bridge v1.8.0 User's Guide
 
 ## 1. What the Bridge does
 
@@ -26,10 +26,10 @@ and wiring documentation.
 Run:
 
 ```text
-bridge-application\nice64-bridge-v1.7.0\application\PicoSwitchController.exe
+bridge-application\nice64-bridge-v1.8.0\application\PicoSwitchController.exe
 ```
 
-The title should report `PicoSwitchController v1.7.0`. Keep the entire
+The title should report `PicoSwitchController v1.8.0`. Keep the entire
 `application` folder together; its DLLs, assets, modules, and runtime files are
 required.
 
@@ -110,7 +110,7 @@ release. Recalibrate if the device identity, driver, or physical range changes.
 ## 11. Wireless controller mode
 
 When the Bridge and Pico have a valid Wi-Fi path, controller state can use the
-one-way `LATEST_STATE` UDP path. Bridge v1.7.0 repeatedly reports the current
+one-way `LATEST_STATE` UDP path. Bridge v1.8.0 repeatedly reports the current
 authoritative state instead of sending only input changes. Packets are
 disposable: there is no per-update ACK, retry queue, or reconstruction backlog.
 A new sender session takes ownership, and retired sessions cannot regain it.
@@ -152,7 +152,7 @@ replace known-good data.
 
 ### Event-driven Transfer Pak saves
 
-Bridge v1.7.0 does not periodically poll `STAT` or perform background
+Bridge v1.8.0 does not periodically poll `STAT` or perform background
 `GBSDUMP` reads during Transfer Pak gameplay. The Pico owns live runtime
 operation. The Bridge reads and persists the current save at these boundaries:
 
@@ -198,11 +198,23 @@ Quick after correcting the problem.
 
 The API host is disabled by default and binds only to IPv4 loopback when
 enabled. It requires a bearer token protected for the current Windows user. The
-public HTTP mutations cover firmware, accessory, Network Pak module, and TCP or
-Reliable UDP Quick carrier selection. See [Bridge API v1](BRIDGE_API.md).
+public HTTP mutations cover firmware, accessory, Network Pak module, TCP or
+Reliable UDP Quick carrier selection, session-scoped controller Primary, and
+session-scoped History activation. See [Bridge API v1](BRIDGE_API.md).
 
 The API does not expose remote controller streaming, Connect/Disconnect,
 Wi-Fi provisioning, Pak content transfer, firmware upload, or transport tuning.
+
+### Android companion and controller authority
+
+Bridge v1.8.0 supports the NICE64 Android companion through LocalNetwork HTTPS
+and local QR onboarding. Controller authority has exactly two values: **Bridge
+Primary** and **NICE Mobile Primary**. The Bridge remains authoritative.
+
+Android management uses the authenticated Bridge API. Under NICE Mobile
+Primary, Android physical/touch controller state travels directly to the Pico
+over UDP `LATEST_STATE`; it is not streamed through HTTP. See
+[Android companion](ANDROID_COMPANION.md).
 
 ## 17. Settings and debug logs
 
@@ -245,7 +257,7 @@ additional project-specific notes.
 
 ## 19. Compatibility and legacy releases
 
-Bridge v1.7.0 is packaged with Universal Firmware v1.2.0 and preserves the
+Bridge v1.8.0 is packaged with Universal Firmware v1.2.0 and preserves the
 established Bridge/firmware/accessory protocol contract. Use the matched current
 pair for testing and support. Historical Bridge versions remain under
 `bridge-application/Legacy`; historical firmware remains under

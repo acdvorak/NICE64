@@ -28,7 +28,7 @@ mode recovery and provisioning. Mode changes reboot NICE64 and close sessions.
 
 **Controller Pak or Transfer Pak save**: use normal Bridge lifecycle actions so
 the active persistence service can finish its bounded flush. During normal
-Transfer Pak gameplay, Bridge v1.7.0 performs no periodic Transfer Pak `STAT`
+Transfer Pak gameplay, Bridge v1.8.0 performs no periodic Transfer Pak `STAT`
 polling, no background dirty-counter polling, and no background debounced
 `GBSDUMP` autosave. Game Boy save synchronization is event-driven at explicit
 lifecycle boundaries: accessory change, firmware-mode change, GB/GBC ROM
@@ -37,7 +37,7 @@ process termination, abrupt NICE64 power loss, or unplugging before that flush
 can prevent the newest Game Boy save from reaching the PC.
 
 **Connection Failed**: verify
-`bridge-application/nice64-bridge-v1.7.0/application/PicoSwitchController.exe`
+`bridge-application/nice64-bridge-v1.8.0/application/PicoSwitchController.exe`
 is running, the selected transport is correct, and the Network Pak hardware is
 connected. Enable and inspect the Bridge log only when diagnosing a problem.
 

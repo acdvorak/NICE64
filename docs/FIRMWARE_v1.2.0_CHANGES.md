@@ -1,8 +1,7 @@
 # NICE64 Universal Firmware v1.2.0
 
-**Release status:** Release candidate. Current build, regression, and available
-real-hardware validation has passed; final comprehensive source-code review
-remains pending.
+**Release status:** Final / accepted. Build, regression, source review, and
+available real-hardware validation passed for the exported v1.2.0 artifact.
 
 ## Release summary
 
@@ -62,7 +61,7 @@ SHA-256:
   current Bridge.
 - Network Pak application framing and RUDP wire version remain unchanged.
 - USB VID/PID and the existing flash partition layout are unchanged.
-- Bridge v1.7.0 is the recommended paired desktop release.
+- Bridge v1.8.0 is the recommended paired desktop release.
 
 ## Validation observations
 
@@ -78,11 +77,11 @@ SHA-256:
 
 These are validation observations, not universal performance guarantees.
 
-## RC review disposition
+## Review disposition
 
 Static review identified that `core_transport_core1_call_core0()` waits for
 the matching Core0 response generation without a timeout. This is accepted as
-an RC risk and intentionally remains unchanged because no supported
+an accepted deferred risk and intentionally remains unchanged because no supported
 reproducible mailbox-liveness failure has been demonstrated. Timeout, recovery,
 mailbox-generation, Core0, and Joybus behavior were not changed speculatively
 at this protected synchronization boundary. Revisit only with a reproducible

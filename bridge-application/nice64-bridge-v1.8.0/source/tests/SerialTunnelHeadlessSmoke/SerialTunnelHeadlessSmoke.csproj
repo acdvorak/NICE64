@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\..\NetworkPakModule.cs" Link="NetworkPakModule.cs" />
+    <Compile Include="..\..\BridgeConstants.cs" Link="BridgeConstants.cs" />
+    <Compile Include="..\..\FirmwareModeControl.cs" Link="FirmwareModeControl.cs" />
+    <Compile Include="..\..\BridgeDeviceState.cs" Link="BridgeDeviceState.cs" />
+    <Compile Include="..\..\SerialTunnelModule.cs" Link="SerialTunnelModule.cs" />
+    <Compile Include="..\..\PppDiagnosticDecoder.cs" Link="PppDiagnosticDecoder.cs" />
+  </ItemGroup>
+</Project>

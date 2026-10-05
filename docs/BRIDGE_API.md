@@ -1,14 +1,13 @@
-# NICE64 Bridge v1.7.0 — Local API v1 Reference
+# NICE64 Bridge v1.8.0 — Local API v1 Reference
 
 ## Document status
 
-> **Release status:** This API is part of the Bridge v1.7.0 final release.
-> The documented v1 command surface is considered frozen, while final
-> comprehensive source-code review of the release remains pending.
+> **Release status:** This API is part of NICE64 Bridge v1.8.0. Its explicit v1
+> routes and authoritative-state model are frozen for this release.
 
-This document describes the local HTTP command API implemented in NICE64 Bridge v1.7.0. It is derived from the current host, route, facade, projection, token-store, operation, aggregate-state, and carrier contracts. It documents the API as it exists, not a proposed future server or multi-device architecture.
+This document describes the HTTP API implemented in NICE64 Bridge v1.8.0. It is derived from the current host, route, facade, projection, token-store, operation, aggregate-state, session, History, controller-Primary, and carrier contracts. It documents the API as it exists, not a proposed future server or multi-device architecture.
 
-The Bridge remains a one-Pico-per-instance Windows desktop application. The API is an optional, authenticated loopback interface into the same semantic services and the same global operation coordinator used by the desktop UI.
+The Bridge remains a one-Pico-per-instance Windows desktop application. The API is optional and disabled by default. It supports HTTP on IPv4 loopback and, when explicitly configured, authenticated HTTPS on exactly one selected LAN IPv4. Both listeners use the same semantic services and operation coordinator as the desktop UI.
 
 ## 1. API architecture at a glance
 
@@ -17,7 +16,7 @@ Local API client
     |
     |  Authorization: Bearer <token>
     v
-IPv4 loopback Kestrel host
+Explicit loopback HTTP / selected-LAN HTTPS Kestrel listeners
     |
     v
 Explicit /api/v1 routes
@@ -42,29 +41,24 @@ The API does not create a second semantic state machine. A command submitted thr
 
 ## 2. Enabling and locating the API
 
-The API is disabled by default. Set these environment variables before starting the Bridge desktop process:
+The API is disabled by default. Use the desktop API access settings to choose
+one of three exact modes:
 
-| Environment variable | Meaning | Default |
-|---|---|---|
-| `NICE64_BRIDGE_API_ENABLED` | Enables the API when set to `1`, `true`, `yes`, or `on` (case-insensitive) | Disabled |
-| `NICE64_BRIDGE_API_PORT` | TCP port on the IPv4 loopback interface | `6470` |
+- **Off** — no API listener.
+- **LocalOnly** — HTTP on `127.0.0.1` only.
+- **LocalNetwork** — HTTP loopback plus HTTPS on exactly one validated selected
+  LAN IPv4.
 
-PowerShell example:
+The default port is `6470`. LocalNetwork never uses a wildcard listener and
+never falls back to plaintext LAN HTTP. If the selected interface, TLS identity,
+or HTTPS bind is unavailable, the desired LocalNetwork setting remains visible
+while runtime access degrades safely to loopback-only.
 
-```powershell
-$env:NICE64_BRIDGE_API_ENABLED = "true"
-$env:NICE64_BRIDGE_API_PORT = "6470"
-
-# Start the Bridge from this same environment.
-```
-
-With the default port, the base address is:
-
-```text
-http://127.0.0.1:6470
-```
-
-The host listens on IPv4 loopback only. It does not bind to a LAN address, all interfaces, IPv6, or a public endpoint.
+The Bridge owns one persistent self-signed ECDSA P-256 server identity protected
+with DPAPI `CurrentUser`. Local onboarding exposes its non-secret SPKI pin and
+certificate fingerprint together with the current HTTPS endpoint and bearer
+credential in a transient QR presentation. The Android companion uses that
+profile-scoped identity; normal public-PKI trust is not implied.
 
 ### Host limits
 
@@ -101,11 +95,12 @@ NICE64.Bridge.LocalApi.Token.v1
 
 The encrypted file is not the bearer token and must not be copied into the HTTP header. Authentication hashes the supplied token and the expected token with SHA-256 and compares those hashes in fixed time.
 
-### Current token-provisioning limitation
+### Local onboarding
 
-The present desktop application creates and loads the token internally, but it does not yet provide a user-facing screen, command-line command, or HTTP endpoint that reveals or rotates the plaintext token. `RotateToken()` exists at the internal storage boundary, but it is not wired to a production user workflow.
-
-Consequently, an external API client needs an approved same-user provisioning integration to receive the token. The protected file alone is intentionally not directly usable as a bearer credential. Adding a token display, copy, rotation, or client-provisioning workflow would be a separate, security-sensitive application change; it is not part of the frozen API command surface described here.
+The desktop provides an explicit local onboarding presentation for pairing the
+Android companion. It reveals the current endpoint, server pin/fingerprint, and
+bearer credential only during that local user action. No unauthenticated token,
+onboarding, certificate, or settings route was added.
 
 Do not log the bearer token, place it in source control, pass it in a URL, or expose it to another Windows user.
 
@@ -140,6 +135,12 @@ All documented command values are exact protocol strings. Values are trimmed, bu
 | `GET` | `/api/v1/health` | Authenticated host liveness check |
 | `GET` | `/api/v1/operation` | Read the one current or most recently completed global operation |
 | `GET` | `/api/v1/state` | Capture authoritative aggregate Bridge state |
+| `GET` | `/api/v1/history` | Read API-safe Controller Pak/Transfer Pak History |
+| `GET` | `/api/v1/sessions` | Read the current Bridge session collection |
+| `GET` | `/api/v1/sessions/{sessionId}` | Read one current Bridge session |
+| `GET` | `/api/v1/sessions/{sessionId}/controller/primary` | Read controller Primary and endpoint state |
+| `PUT` | `/api/v1/sessions/{sessionId}/controller/primary` | Select Bridge Primary or NICE Mobile Primary |
+| `POST` | `/api/v1/sessions/{sessionId}/history/{itemId}/activate` | Activate one authoritative History item |
 | `POST` | `/api/v1/firmware` | Select firmware personality |
 | `POST` | `/api/v1/accessory` | Select N64 accessory semantics |
 | `POST` | `/api/v1/network-pak/module` | Select a registered Network Pak module |
@@ -724,7 +725,7 @@ For carrier selection specifically, terminal desktop checkmarks are derived from
 The frozen local API security posture is:
 
 - Optional and disabled by default.
-- IPv4 loopback only.
+- HTTP on IPv4 loopback; optional HTTPS on exactly one selected LAN IPv4.
 - Bearer authentication for every `/api/v1` route.
 - Random token protected with DPAPI `CurrentUser`.
 - Bounded Kestrel request and timeout limits.
@@ -732,9 +733,12 @@ The frozen local API security posture is:
 - No Swagger/OpenAPI UI.
 - No developer exception details in responses.
 - No full local paths in aggregate state.
-- No remote/LAN binding option in the documented API configuration.
+- No wildcard listener, plaintext LAN fallback, or automatic interface migration.
 
-Loopback binding reduces network exposure but does not replace authentication. Any process running as the same Windows user may be within the local threat boundary, so bearer credentials must still be handled as secrets.
+TLS does not replace bearer authentication. Pair only on a trusted LAN and keep
+the onboarding payload and bearer credential secret. The API does not bind to
+all interfaces, install a trusted root, alter Windows Firewall, or expose a
+public/internet listener.
 
 ## 16. Frozen transport behavior
 
@@ -755,7 +759,7 @@ The API does not imply that earlier TCP performance concerns are globally solved
 
 The principal implementation files are located under:
 
-`bridge-application/nice64-bridge-v1.7.0/source/` in the repository.
+`bridge-application/nice64-bridge-v1.8.0/source/` in the repository.
 
 | Concern | Source file |
 |---|---|
@@ -787,7 +791,7 @@ After receiving `202`:
 
 ---
 
-**Release context:** Bridge v1.7.0 includes the completed, accepted, and frozen
-Phase F service/API boundary and Phase G controller-delivery work. The HTTP
-surface remains the exact v1 route set documented above; Phase G did not add
-remote controller streaming or transport-tuning endpoints.
+**Release context:** Bridge v1.8.0 packages the accepted service/API boundary,
+explicit controller Primary, History/session routes, LocalNetwork HTTPS, and
+Android companion integration. Controller gameplay remains direct Android-to-
+Pico UDP `LATEST_STATE`; it is not an HTTP streaming route.

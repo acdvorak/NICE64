@@ -11,14 +11,14 @@ External modules execute inside the Bridge process and are trusted local code.
 Built-in packages are located under:
 
 ```text
-bridge-application/nice64-bridge-v1.7.0/application/modules
+bridge-application/nice64-bridge-v1.8.0/application/modules
 ```
 
 External packages use one immediate subdirectory per module:
 
 ```text
 bridge-application/
-  nice64-bridge-v1.7.0/
+  nice64-bridge-v1.8.0/
     application/
       PicoSwitchController.exe
       PicoSwitchController.dll
@@ -226,13 +226,13 @@ dotnet build -c Release
 Copy the resulting DLL and any private dependencies to:
 
 ```text
-bridge-application/nice64-bridge-v1.7.0/application/modules/sample-module/bin
+bridge-application/nice64-bridge-v1.8.0/application/modules/sample-module/bin
 ```
 
 Copy `module.json` to:
 
 ```text
-bridge-application/nice64-bridge-v1.7.0/application/modules/sample-module/module.json
+bridge-application/nice64-bridge-v1.8.0/application/modules/sample-module/module.json
 ```
 
 Restart the Bridge.

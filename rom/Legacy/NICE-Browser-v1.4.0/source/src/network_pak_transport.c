@@ -1,5 +1,4 @@
 #include "network_pak_transport.h"
-#include "network_pak_response_gate.h"
 
 #include <joybus.h>
 #include <joybus_accessory.h>
@@ -23,11 +22,21 @@ static bool network_pak_is_bridge_command(uint8_t command)
         || (command >= NICE_NET_CMD_OPEN_STREAM && command <= NICE_NET_CMD_CLOSE_STREAM);
 }
 
+static bool network_pak_response_is_bridge_pending(const nice_net_packet_t *packet)
+{
+    static const char pending[] = "BRIDGE_PENDING";
+    nice_net_error_t error = NICE_NET_ERR_NONE;
+    return nice_net_packet_validate(packet, &error)
+        && packet->command == NICE_NET_CMD_STATUS
+        && packet->payload_length == sizeof(pending) - 1u
+        && memcmp(packet->payload, pending, sizeof(pending) - 1u) == 0;
+}
+
 static uint8_t network_pak_data_crc(const uint8_t *data)
 {
     unsigned int crc = 0;
 
-    for (size_t i = 0; i < NICE_NET_WIRE_BLOCK_SIZE; i++)
+    for (int i = 0; i < NICE_NET_WIRE_BLOCK_SIZE; i++)
     {
         unsigned int x = crc ^ data[i];
         crc = 0;
@@ -154,8 +163,6 @@ bool network_pak_exchange(const nice_net_packet_t *request, nice_net_packet_t *r
     uint8_t calc_crc = 0;
     int io_status;
     bool bridge_wait_timeout = false;
-    bool response_accepted = false;
-    network_pak_response_disposition_t response_disposition = NETWORK_PAK_RESPONSE_INVALID;
     g_status.packets_tx++;
     memset(response_block, 0xEE, sizeof(response_block));
     g_status.first_read_status = 0;
@@ -225,27 +232,7 @@ bool network_pak_exchange(const nice_net_packet_t *request, nice_net_packet_t *r
                 break;
             }
 
-            response_disposition = network_pak_classify_response(request, response);
-            if (response_disposition == NETWORK_PAK_RESPONSE_CURRENT)
-            {
-                response_accepted = true;
-                break;
-            }
-
-            if (response_disposition == NETWORK_PAK_RESPONSE_INVALID)
-            {
-                g_status.invalid_response_count++;
-            }
-            else if (response_disposition == NETWORK_PAK_RESPONSE_STALE)
-            {
-                g_status.stale_response_count++;
-            }
-            else
-            {
-                g_status.pending_response_count++;
-            }
-
-            if (!network_pak_is_bridge_command(request->command))
+            if (!network_pak_response_is_bridge_pending(response))
             {
                 break;
             }
@@ -260,8 +247,7 @@ bool network_pak_exchange(const nice_net_packet_t *request, nice_net_packet_t *r
             wait_ms(BROWSER_RESOURCE_POLL_INTERVAL_MS);
         }
 
-        if (g_status.last_read_status == JOYBUS_ACCESSORY_IO_STATUS_OK &&
-            response_accepted && !bridge_wait_timeout)
+        if (g_status.last_read_status == JOYBUS_ACCESSORY_IO_STATUS_OK && !bridge_wait_timeout)
         {
             g_status.connected = true;
             g_status.using_stub = false;
@@ -274,22 +260,9 @@ bool network_pak_exchange(const nice_net_packet_t *request, nice_net_packet_t *r
             return true;
         }
 
-        if (bridge_wait_timeout)
-        {
-            g_status.last_transport_error = "BRIDGE_TIMEOUT";
-        }
-        else if (g_status.last_read_status != JOYBUS_ACCESSORY_IO_STATUS_OK)
-        {
-            g_status.last_transport_error = accessory_io_status_name(g_status.last_read_status);
-        }
-        else if (response_disposition == NETWORK_PAK_RESPONSE_STALE)
-        {
-            g_status.last_transport_error = "STALE_RESPONSE";
-        }
-        else
-        {
-            g_status.last_transport_error = "INVALID_RESPONSE";
-        }
+        g_status.last_transport_error = bridge_wait_timeout
+            ? "BRIDGE_TIMEOUT"
+            : accessory_io_status_name(g_status.last_read_status);
     }
     else
     {

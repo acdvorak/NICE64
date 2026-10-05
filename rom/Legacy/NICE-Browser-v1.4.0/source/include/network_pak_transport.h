@@ -30,9 +30,6 @@ typedef struct network_pak_status_s
     uint32_t errors;
     uint32_t bridge_poll_count;
     uint32_t bridge_wait_timeout_count;
-    uint32_t invalid_response_count;
-    uint32_t stale_response_count;
-    uint32_t pending_response_count;
 } network_pak_status_t;
 
 void network_pak_init(void);

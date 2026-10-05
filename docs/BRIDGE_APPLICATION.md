@@ -2,14 +2,14 @@
 
 ## Current release
 
-Bridge v1.7.0 is the one-Pico-per-instance Windows desktop host for controller
+Bridge v1.8.0 is the one-Pico-per-instance Windows desktop host for controller
 input, firmware and accessory control, Pak content, Wi-Fi provisioning, Network
 Pak services/modules, and the optional authenticated local API.
 
 Run:
 
 ```text
-bridge-application/nice64-bridge-v1.7.0/application/PicoSwitchController.exe
+bridge-application/nice64-bridge-v1.8.0/application/PicoSwitchController.exe
 ```
 
 For practical setup and operation, see the [Bridge User's Guide](BRIDGE_USER_GUIDE.md).
@@ -45,8 +45,19 @@ images should not be committed or redistributed unintentionally.
 
 ## Status and limitations
 
-The v1.7.0 Release build completes with zero warnings and errors and the
-established non-hardware matrix passes 31/31. Available hardware testing covers
+The v1.8.0 Release build completes with zero warnings and errors and the
+established non-hardware matrix passes 60/60. Available hardware testing covers
 normal Transfer Pak, Network Pak browser, and wireless controller workflows.
 TCP remains the Network Pak reference carrier; the release does not claim every
 historical transport-performance issue is solved.
+
+## Android companion
+
+Bridge v1.8.0 provides the authoritative HTTPS API, onboarding identity,
+History, and controller-Primary boundaries used by the Android companion.
+Management traffic uses the authenticated Bridge API. Under NICE Mobile
+Primary, gameplay controller state travels directly from Android to NICE64/Pico
+over UDP `LATEST_STATE`; it is not relayed by the Bridge HTTP host.
+
+See [Android companion](ANDROID_COMPANION.md) for installation, pairing,
+controller profiles, touch controls, and Controller Blackout Mode.

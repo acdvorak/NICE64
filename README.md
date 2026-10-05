@@ -3,42 +3,37 @@
 NICE64 connects a real Nintendo 64 controller port to a Windows Bridge through
 Pico 2 W firmware. The current release stack combines normal
 controller/accessory operation, Diagnostics, Network Pak, USB, Wi-Fi/TCP, and
-Product Quick Mode over reliable ordered UDP. Bridge v1.7.0 also provides
-one-way `LATEST_STATE` wireless controller delivery and an optional local API.
+Product Quick Mode over reliable ordered UDP. Bridge v1.8.0 also provides
+one-way `LATEST_STATE` wireless controller delivery, an optional authenticated
+API, and integration with the NICE64 Android companion.
 
 ## Current versions and status
 
-- **Universal Firmware:** v1.2.0 final release
-- **NICE64 Bridge:** v1.7.0 final release
+- **Universal Firmware:** v1.2.0 final release — `firmware/unified-firmware-v1.2.0/`
+- **NICE64 Bridge:** v1.8.0 — `bridge-application/nice64-bridge-v1.8.0/`
+- **NICE64 Android companion:** accepted frozen build (`0.1.0-dev` project identity) — `android-application/`
+- **NICE Browser:** v1.4.1 — `rom/NICE-Browser-v1.4.1/`
 - **RUDP-C carrier:** physically accepted and frozen
 - **Network Pak TCP:** supported reference transport
 - **Product Quick Mode:** validated on real N64 hardware with exact protected
   Network Pak transfer CRC and zero reported errors/timeouts
 
-The earlier v1.4 Bridge and ROM releases remain under their existing `Legacy`
-convention. Historical Network Pak Gold and Regular/Normal Gold firmware remain
-unchanged.
+The earlier v1.4 Bridge and Browser v1.4.0 layout remains under the existing
+`Legacy` convention. NICE Browser v1.4.1 is the current release at
+`rom/NICE-Browser-v1.4.1/`. Historical Network Pak Gold and Regular/Normal Gold
+firmware remain unchanged.
 
-### Release candidate notice
-
-Universal Firmware v1.2.0 and NICE64 Bridge v1.7.0 are currently release
-candidates. The documented workflows have passed the project's current
-automated and available real-hardware validation, but a final comprehensive
-source-code review is still pending.
-
-The current builds may be used as-is for testing and normal use. Users who
-prefer a fully reviewed baseline may wish to wait for the final v1.2.0/v1.7.0
-release. Reproducible issues discovered during review or community testing are
-welcome. Please include the Firmware and Bridge versions, operating mode or
-accessory, USB or Wi-Fi connection type, steps to reproduce, and relevant debug
-information.
+Bridge v1.8.0 and the Android companion retain Universal Firmware v1.2.0.
+These are separate version identities; Bridge 1.8 does not require or imply a
+firmware update beyond v1.2.0.
 
 ## Repository layout
 
 ```text
 NICE64/
+|-- android-application/
 |-- bridge-application/
-|   |-- nice64-bridge-v1.7.0/
+|   |-- nice64-bridge-v1.8.0/
 |   `-- Legacy/
 |-- configuration/
 |-- docs/
@@ -52,6 +47,7 @@ NICE64/
 |       `-- regular-gold-normal/
 |-- hardware/
 |-- rom/
+|   |-- NICE-Browser-v1.4.1/
 |   `-- Legacy/
 |-- CHECKSUMS_SHA256.txt
 |-- LICENSE.md
@@ -65,7 +61,7 @@ preserved.
 
 1. Flash the v1.2.0 UF2 from `firmware/unified-firmware-v1.2.0/` to a Pico 2 W.
 2. Start
-   `bridge-application/nice64-bridge-v1.7.0/application/PicoSwitchController.exe`.
+   `bridge-application/nice64-bridge-v1.8.0/application/PicoSwitchController.exe`.
 3. Connect over USB and select the NICE64 COM port.
 4. Provision Wi-Fi over USB and note the DHCP address.
 5. Use Controller personality for normal controller, Controller Pak, or
@@ -76,6 +72,27 @@ preserved.
 
 USB remains the provisioning and recovery path. Quick Mode does not silently
 fall back to TCP.
+
+### Android companion
+
+Install `android-application/NICE64-Android-Companion.apk`, then use the
+Bridge's local onboarding workflow to pair on a trusted LAN. Android management
+traffic uses the authenticated, pinned HTTPS Bridge API. Gameplay controller
+state does not pass through HTTP or the Bridge: while **NICE Mobile Primary** is
+authoritative it travels directly from Android to NICE64/Pico over disposable
+UDP `LATEST_STATE` packets.
+
+Controller authority has exactly two values: **Bridge Primary** and **NICE
+Mobile Primary**. The companion supports Android USB/Bluetooth controllers,
+saved controller mappings, embedded and full-screen touch controls, History,
+Accessories and Modes, and Advanced diagnostics. Controller Blackout Mode keeps
+the activity foregrounded on a true-black OLED-friendly surface and prevents
+normal inactivity timeout; it does not provide controller operation while the
+Android lock screen owns focus or the display is turned off with the power
+button.
+
+The frozen Android project snapshot is available at
+`android-application/source/`; build details are in the component README.
 
 ## Current architecture
 
@@ -102,7 +119,7 @@ RUDP carrier capability is not Network Pak or ROM end-to-end throughput.
 
 Normal Product Quick Mode operation is validated on real N64 hardware, and
 RUDP-C remains physically accepted and frozen. Transfer Pak save persistence is
-event-driven in Bridge v1.7.0, eliminating periodic Bridge save polling during
+event-driven in Bridge v1.8.0, eliminating periodic Bridge save polling during
 gameplay. See [Known Issues and Deferred Work](docs/KNOWN_ISSUES.md) for
 remaining lifecycle and throughput limitations.
 
@@ -111,8 +128,9 @@ remaining lifecycle and throughput limitations.
 - [Unified Firmware](docs/UNIFIED_FIRMWARE.md)
 - [Bridge User's Guide](docs/BRIDGE_USER_GUIDE.md)
 - [Bridge API v1](docs/BRIDGE_API.md)
+- [Android companion](docs/ANDROID_COMPANION.md)
 - [Firmware v1.2.0 changes](docs/FIRMWARE_v1.2.0_CHANGES.md)
-- [Bridge v1.7.0 changes](docs/BRIDGE_v1.7.0_CHANGES.md)
+- [Bridge v1.8.0 changes](docs/BRIDGE_v1.8.0_CHANGES.md)
 - [Wi-Fi implementation](docs/WIFI_IMPLEMENTATION.md)
 - [Bridge architecture and user guide](docs/BRIDGE_APPLICATION.md)
 - [Build the Bridge](docs/BUILD_BRIDGE.md)
@@ -124,14 +142,16 @@ remaining lifecycle and throughput limitations.
 - [Changelog](docs/CHANGELOG.md)
 - [Licenses and notices](docs/LICENSES.md)
 
-Historical ROM documentation remains with each ROM beneath `rom/Legacy/`.
+ROM documentation remains with each packaged ROM. The current Browser is at
+`rom/NICE-Browser-v1.4.1/`; Browser v1.4.0 remains preserved under
+`rom/Legacy/` as a historical release.
 
 ## Build overview
 
 Bridge requires the .NET 9 SDK on Windows:
 
 ```powershell
-dotnet build bridge-application/nice64-bridge-v1.7.0/source/PicoSwitchController.csproj -c Release
+dotnet build bridge-application/nice64-bridge-v1.8.0/source/PicoSwitchController.csproj -c Release
 ```
 
 Firmware requires CMake, Ninja, the Arm GNU embedded toolchain, and a compatible

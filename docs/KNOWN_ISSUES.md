@@ -1,7 +1,7 @@
 # Known Issues and Deferred Work
 
 This document records current limitations of the NICE64 firmware v1.2.0 and
-PicoSwitchController Bridge v1.7.0 release. It does not override the supported
+PicoSwitchController Bridge v1.8.0 release. It does not override the supported
 workflows described in the [Bridge user guide](BRIDGE_USER_GUIDE.md).
 
 ## RC review dispositions
@@ -68,20 +68,31 @@ Sustained Transfer Pak upload testing previously exposed Windows COM semaphore
 timeouts on one Pico device. A second Pico using the same firmware and current
 Bridge completed the workflow, and Wi-Fi completed the same 2 MiB upload and
 produced a working game image. The issue followed the individual Pico across
-Bridge versions and firmware reflash, so it is not classified as a v1.7.0
+Bridge versions and firmware reflash, so it is not classified as a v1.8.0
 Bridge release blocker.
 
 If a device exhibits repeated USB semaphore failures, try another known-good
 Pico or use the supported Wi-Fi content path. A cable change alone did not
 resolve the observed device-specific case.
 
+## Android screen-off controller limitation
+
+True Android lock-screen or power-button-off physical-controller continuation
+is not supported. **Controller Blackout Mode** is the supported workaround: it
+keeps the NICE64 Activity foregrounded on a true-black surface and prevents the
+normal inactivity timeout while preserving physical-controller operation.
+Blackout exits when the accepted Android `ON_STOP` lifecycle takes ownership,
+including the lock-screen path. Restore display or Android Back exits Blackout
+normally.
+
 ## API scope and token provisioning
 
 The authenticated API is optional and disabled by default. Its supported
-mutation surface is intentionally limited to firmware, accessory, Network Pak
-module, and Network Pak TCP/Quick carrier selection. USB carrier selection,
-Connect/Disconnect, content transfer, Wi-Fi provisioning, controller streaming,
-and transport tuning are not HTTP routes.
+mutation surface includes firmware, accessory, Network Pak module, Network Pak
+TCP/Quick carrier selection, session-scoped controller Primary selection, and
+session-scoped History activation. USB carrier selection, Connect/Disconnect,
+content transfer, Wi-Fi provisioning, controller streaming, and transport
+tuning are not HTTP routes.
 
 Token storage is protected for the current Windows user. Deployment and token
 provisioning remain local administrator/user responsibilities; the Bridge does
@@ -97,7 +108,7 @@ External clients use the bounded polling contract:
 3. read `/api/v1/state` for authoritative settled state.
 
 There is no SSE, WebSocket, webhook, long-polling, event-bus, ETag, or state
-revision mechanism in v1.7.0.
+revision mechanism in v1.8.0.
 
 ## Deferred product work
 
@@ -110,7 +121,7 @@ The following are outside this release:
 - remote controller streaming through HTTP;
 - content upload/download APIs;
 - a separate multi-device/headless NICE64 Server application;
-- Android/mobile application work.
+- broader Android controller compatibility beyond validated devices.
 
 The desktop Bridge remains a one-Pico-per-instance application. A future server,
 if developed, will be a separate composition that may reuse the extracted

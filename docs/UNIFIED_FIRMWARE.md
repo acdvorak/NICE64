@@ -84,7 +84,7 @@ carrier defect. RUDP-C remains physically accepted and frozen.
 
 UDP discovery, static IPv4 provisioning, Android clients, and headless server
 operation remain future work. `LATEST_STATE` controller delivery and the
-documented local Bridge API are current v1.2.0/v1.7.0 behavior. Network Pak
+documented Bridge API are current firmware v1.2.0 / Bridge v1.8.0 behavior. Network Pak
 throughput investigation remains separate and must not be conflated with
 synthetic RUDP carrier throughput.
 Joybus redesign, broad Core0 changes, RTC work, removable storage, and Rumble

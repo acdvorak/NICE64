@@ -1,0 +1,10 @@
+{
+  "id": "serial-tunnel",
+  "displayName": "Serial Tunnel",
+  "version": "0.2.0",
+  "author": "NICE64",
+  "description": "Generic bounded raw byte tunnel with passive PPP diagnostics over Network Pak Gold streams.",
+  "resourcePrefix": "serial://",
+  "defaultResource": "serial://tunnel",
+  "contentRoot": "content"
+}

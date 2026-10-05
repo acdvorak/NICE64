@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">NICE64</string>
+    <string name="nice64_status_healthy">Healthy</string>
+    <string name="nice64_status_unavailable">Unavailable</string>
+    <string name="nice64_status_warning">Warning</string>
+    <string name="nice64_status_error">Error</string>
+    <string name="nice64_status_in_progress">In progress</string>
+    <string name="nice64_status_information">Information</string>
+</resources>

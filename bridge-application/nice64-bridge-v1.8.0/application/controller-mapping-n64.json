@@ -1,0 +1,94 @@
+{
+  "Bindings": {
+    "DUp": {
+      "Kind": "Pov",
+      "Index": 0,
+      "Direction": "Up"
+    },
+    "DDown": {
+      "Kind": "Pov",
+      "Index": 0,
+      "Direction": "Down"
+    },
+    "DLeft": {
+      "Kind": "Pov",
+      "Index": 0,
+      "Direction": "Left"
+    },
+    "DRight": {
+      "Kind": "Pov",
+      "Index": 0,
+      "Direction": "Right"
+    },
+    "Stick Up": {
+      "Kind": "Axis",
+      "Index": 0,
+      "Direction": "Y-"
+    },
+    "Stick Down": {
+      "Kind": "Axis",
+      "Index": 0,
+      "Direction": "Y\u002B"
+    },
+    "Stick Left": {
+      "Kind": "Axis",
+      "Index": 0,
+      "Direction": "X-"
+    },
+    "Stick Right": {
+      "Kind": "Axis",
+      "Index": 0,
+      "Direction": "X\u002B"
+    },
+    "A": {
+      "Kind": "Button",
+      "Index": 6,
+      "Direction": ""
+    },
+    "B": {
+      "Kind": "Button",
+      "Index": 8,
+      "Direction": ""
+    },
+    "L": {
+      "Kind": "Button",
+      "Index": 4,
+      "Direction": ""
+    },
+    "R": {
+      "Kind": "Button",
+      "Index": 5,
+      "Direction": ""
+    },
+    "Z": {
+      "Kind": "Button",
+      "Index": 7,
+      "Direction": ""
+    },
+    "Start": {
+      "Kind": "Button",
+      "Index": 9,
+      "Direction": ""
+    },
+    "CUp": {
+      "Kind": "Button",
+      "Index": 0,
+      "Direction": ""
+    },
+    "CLeft": {
+      "Kind": "Button",
+      "Index": 3,
+      "Direction": ""
+    },
+    "CRight": {
+      "Kind": "Button",
+      "Index": 1,
+      "Direction": ""
+    },
+    "CDown": {
+      "Kind": "Button",
+      "Index": 2,
+      "Direction": ""
+    }
+  }
+}
