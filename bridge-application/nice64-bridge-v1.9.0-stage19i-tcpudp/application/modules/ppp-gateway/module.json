@@ -1,0 +1,14 @@
+{
+  "id": "ppp-gateway",
+  "displayName": "NICE64 PPP Gateway",
+  "version": "0.1.4-stage19i",
+  "author": "NICE64",
+  "description": "Managed per-connection PPP peer with direct-serial handshake, bounded LCP restart, IPCP, and IPCP-gated local ICMP, UDP echo, and bounded TCP echo endpoints.",
+  "resourcePrefix": "ppp://",
+  "defaultResource": "ppp://gateway",
+  "contentRoot": "content",
+  "assemblyPath": "Nice64.PppGateway.dll",
+  "moduleType": "PicoSwitchController.Nice64PppGatewayModule",
+  "moduleApiVersion": 1,
+  "protocolVersion": 1
+}

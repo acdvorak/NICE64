@@ -1,0 +1,31 @@
+.program n64_rx_pulse
+
+; Decode N64/Joybus host pulses by measuring low-pulse width in PIO.
+; The state machine emits one FIFO word per low pulse:
+;   1 = short low pulse (~1 us, Joybus bit 1)
+;   0 = long low pulse  (~3 us, Joybus bit 0)
+;
+; The CPU groups command pulses and treats the stop pulse as the pulse
+; after the expected command bits.
+
+.wrap_target
+    wait 1 pin 0
+    wait 0 pin 0
+    set x, 7
+
+low_loop:
+    jmp pin short_low
+    jmp x-- low_loop
+
+long_low:
+    wait 1 pin 0
+    set y, 0
+    mov isr, y
+    push block
+    jmp wrap_target
+
+short_low:
+    set y, 1
+    mov isr, y
+    push block
+.wrap

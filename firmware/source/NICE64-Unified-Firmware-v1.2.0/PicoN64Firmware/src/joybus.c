@@ -12,6 +12,8 @@
 #include "hardware/sync.h"
 #include "n64_accessory.h"
 #include "n64_controller.h"
+#include "n64_keyboard.h"
+#include "n64_mouse.h"
 #include "n64_protocol.h"
 #include "network_pak.h"
 #include "joybus_transport.h"
@@ -98,6 +100,12 @@ static inline bool nice64_network_personality_active(void) {
 #else
     return true;
 #endif
+}
+
+static inline bool nice64_keyboard_mouse_personality_active(void) {
+    const nice64_active_mode_t mode = role_manager_active_mode();
+    return mode.role == NICE64_ROLE_STANDALONE &&
+           mode.standalone_service == NICE64_SERVICE_KEYBOARD_MOUSE;
 }
 
 static volatile uint8_t rx_bytes[MAX_COMMAND_BYTES];
@@ -421,6 +429,12 @@ static void n64_send_bytes(uint8_t command, const uint8_t *bytes, int count) {
 }
 
 static int expected_command_bytes(uint8_t command) {
+    if (nice64_keyboard_mouse_personality_active() &&
+        role_manager_keyboard_mouse_device() == NICE64_KEYBOARD_MOUSE_KEYBOARD &&
+        command == N64_KEYBOARD_COMMAND_READ) {
+        return 2;
+    }
+
     if (command == N64_CMD_GAME_ID) {
         return 11;
     }
@@ -488,6 +502,15 @@ static bool prepare_hot_reply(uint8_t command, uint8_t reply[4], int *reply_coun
         debug.last_command = command;
         debug.identify++;
 
+        if (nice64_keyboard_mouse_personality_active()) {
+            if (role_manager_keyboard_mouse_device() == NICE64_KEYBOARD_MOUSE_MOUSE)
+                n64_mouse_identity(reply);
+            else
+                n64_keyboard_identity(reply);
+            *reply_count = 3;
+            return true;
+        }
+
         reply[0] = N64_ID_CONTROLLER;
         reply[1] = 0x00;
 #if NICE64_STANDALONE_NETWORK_ACTIVE
@@ -515,6 +538,13 @@ static bool prepare_hot_reply(uint8_t command, uint8_t reply[4], int *reply_coun
         debug.commands++;
         debug.last_command = command;
         debug.status++;
+        if (nice64_keyboard_mouse_personality_active()) {
+            if (role_manager_keyboard_mouse_device() == NICE64_KEYBOARD_MOUSE_MOUSE) {
+                n64_mouse_read(reply);
+                *reply_count = 4;
+            }
+            return true;
+        }
 #if NICE64_STANDALONE_NETWORK_ACTIVE
         if (nice64_network_personality_active()) {
             nice64_realtime_fill(reply, 0, 4);
@@ -544,6 +574,32 @@ static void prepare_reply(uint8_t command, uint8_t reply[33], int *reply_count, 
     *reply_delay_us = N64_REPLY_DELAY_US;
     debug.commands++;
     debug.last_command = command;
+
+    if (nice64_keyboard_mouse_personality_active()) {
+        const nice64_keyboard_mouse_device_t device =
+            role_manager_keyboard_mouse_device();
+        if (command == N64_CMD_IDENTIFY || command == N64_CMD_RESET) {
+            if (command == N64_CMD_RESET) debug.reset++;
+            else debug.identify++;
+            if (device == NICE64_KEYBOARD_MOUSE_MOUSE)
+                n64_mouse_identity(reply);
+            else
+                n64_keyboard_identity(reply);
+            *reply_count = 3;
+        } else if (command == N64_CMD_STATUS &&
+                   device == NICE64_KEYBOARD_MOUSE_MOUSE) {
+            debug.status++;
+            n64_mouse_read(reply);
+            *reply_count = 4;
+        } else if (command == N64_KEYBOARD_COMMAND_READ &&
+                   device == NICE64_KEYBOARD_MOUSE_KEYBOARD) {
+            n64_keyboard_read(rx_bytes[1], reply);
+            *reply_count = N64_KEYBOARD_REPLY_SIZE;
+        } else {
+            debug.other++;
+        }
+        return;
+    }
 
     if (command == N64_CMD_IDENTIFY || command == N64_CMD_RESET) {
         if (command == N64_CMD_RESET) {

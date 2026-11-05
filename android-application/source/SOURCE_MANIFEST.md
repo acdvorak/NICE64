@@ -1,48 +1,44 @@
-# NICE64 Android frozen source snapshot
+# NICE64 Android accepted source snapshot
 
-This directory is a byte-preserving source snapshot of the accepted NICE64
-Android companion project. The snapshot was prepared on 2026-10-04 from the
-frozen accepted Android development baseline documented by the release audit.
+This directory contains the accepted post-G2 NICE64 Android companion source,
+now targeting version `1.2.0` (version code `2`). It was
+synchronized from the authoritative Keyboard/Mouse development tree without
+generated builds, Gradle/Kotlin caches, local SDK paths, runtime credentials,
+diagnostic output, or signing material.
 
-## Identity
+## Accepted artifact
 
-- Version code: `1`
-- Version name: `0.1.0-dev`
-- Accepted APK SHA-256:
-  `28D9E16DBD94E4FC07B32033DE84C621DE50E2A60C7F8D0D2BD87A5E0BF897CC`
-- Source files copied byte-for-byte: `130`
-- Missing intended source files: `0`
-- Mismatched copied source files: `0`
+`../NICE64-Android-Companion.apk`
 
-The manifest itself is release documentation added after the 130 project files
-were verified.
+The locally built debug artifact identifies as version `1.2.0` (version code
+`2`) and is signed by one Android Debug signer using APK Signature Scheme v2.
 
-## Accepted validation
+SHA-256:
 
-- JVM tests: 327/327 PASS
-- Connected instrumentation: 81/81 PASS
+`3A54F6DC39F6477D8026BF371A467C91FB67A793BB771E92003257491C7177F8`
+
+## Capabilities and validation
+
+The snapshot includes the accepted Controller client, authenticated Bridge
+management, direct RandNET Keyboard/N64 Mouse UDP input, physical and on-screen
+providers, lifecycle neutralization, and persistent Mouse Invert X/Invert Y.
+
+- v1.2.0 JVM tests: 338/338 PASS
 - Android lint: PASS
-- Physical freeze: PASS
+- Debug and unsigned release builds: PASS
+- Prior accepted connected instrumentation baseline: 81/81 PASS
+- G2 direct N64 Mouse / Mario Artist hardware validation: PASS
+
+The packaged APK is debug-signed for manual testing. No production signing
+identity or private key is included.
 
 ## Build
 
-Install Android SDK Platform 36 and Build Tools 36.0.0, then configure the SDK
-location locally outside this snapshot. From this directory run:
+Install Android SDK Platform 36 and Build Tools 36.0.0, configure the SDK path
+outside this repository, and run:
 
 ```powershell
-.\gradlew.bat --no-daemon :core:test :app:testDebugUnitTest :app:lint :app:assembleDebug
+.\gradlew.bat --no-daemon test lintDebug assembleDebug assembleRelease
 ```
 
-The debug APK is produced at `app/build/outputs/apk/debug/app-debug.apk`.
-
-## Exclusions
-
-The snapshot intentionally excludes generated builds and APKs, Gradle/Kotlin
-caches, IDE state, `local.properties`, machine-local SDK paths, diagnostic
-capture tooling and outputs, traces, runtime logs, test-result output,
-screenshots, pairing/runtime data, credentials, certificates/private keys,
-keystores, and temporary files. The accepted APK remains one level above this
-directory as `NICE64-Android-Companion.apk`.
-
-No signing key or production signing instructions are included. Repository
-licensing terms apply; no separate Android license was created for this export.
+Generated output remains excluded by the repository `.gitignore`.

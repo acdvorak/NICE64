@@ -2,7 +2,7 @@
 
 Requirements: Windows, .NET SDK 9, PowerShell 5.1 or later, and internet access for NuGet restore.
 
-From `bridge-application/nice64-bridge-v1.8.0/source`:
+From `bridge-application/nice64-bridge-v1.9.0/source`:
 
 ```powershell
 dotnet restore PicoSwitchController.csproj
@@ -16,11 +16,11 @@ developer INI, logs, PDBs, or Browser session/request data. The application
 creates user-local mutable settings as needed.
 
 The distributed candidate is located at
-`bridge-application/nice64-bridge-v1.8.0/application/PicoSwitchController.exe`.
+`bridge-application/nice64-bridge-v1.9.0/application/PicoSwitchController.exe`.
 
 The publish output is the runtime package; do not validate a distribution by running from a source `bin` directory.
 
-The current Bridge release is v1.8.0. Normal Product Quick Mode operation has
+The current Bridge release candidate is v1.9.0. Normal Product Quick Mode operation has
 passed available real-N64 validation. Reconnect/session-renewal and TCP↔Quick
 handoff remain scheduled for additional lifecycle testing; this is not a
 confirmed persistent defect. Build identity and the corresponding firmware

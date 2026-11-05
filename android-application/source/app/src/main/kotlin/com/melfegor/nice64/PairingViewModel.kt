@@ -20,6 +20,16 @@ import com.melfegor.nice64.api.BridgeMutationCommand
 import com.melfegor.nice64.api.BridgeMutationPhase
 import com.melfegor.nice64.api.BridgeMutationPresentation
 import com.melfegor.nice64.api.BridgeSemanticMutationCoordinator
+import com.melfegor.nice64.api.ActiveBridgeProfileSource
+import com.melfegor.nice64.api.AndroidInputSource
+import com.melfegor.nice64.api.AndroidKeyboardMouseDevice
+import com.melfegor.nice64.api.BridgeKeyboardMouseCoordinator
+import com.melfegor.nice64.api.BridgeKeyboardMousePresentation
+import com.melfegor.nice64.api.BridgeKeyboardMouseDirectDataPlane
+import com.melfegor.nice64.api.BridgeKeyboardMouseDirectStateHolder
+import com.melfegor.nice64.api.MouseInputPreferencesStore
+import com.melfegor.nice64.api.Nice64LogicalKey
+import com.melfegor.nice64.api.PinnedBridgeKeyboardMouseGateway
 import com.melfegor.nice64.api.BridgeHistoryActivationCommand
 import com.melfegor.nice64.api.BridgeHistoryActivationCoordinator
 import com.melfegor.nice64.api.BridgeHistoryActivationPhase
@@ -90,6 +100,10 @@ class Nice64ViewModel internal constructor(
     private val controllerMappingEditor: ControllerMappingEditorCoordinator? = null,
     private val liveControllerProfiles: LiveControllerProfileCache? = null,
     private val controllerInputTrace: ControllerInputTraceCoordinator? = null,
+    keyboardMouseProfileSource: ActiveBridgeProfileSource? = null,
+    keyboardMouseDirectState: BridgeKeyboardMouseDirectStateHolder? = null,
+    keyboardMouseDirectDataPlane: BridgeKeyboardMouseDirectDataPlane? = null,
+    mouseInputPreferencesStore: MouseInputPreferencesStore? = null,
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(Nice64AppState())
     val state: StateFlow<Nice64AppState> = mutableState.asStateFlow()
@@ -102,6 +116,18 @@ class Nice64ViewModel internal constructor(
 
     private val mutableMutationState = MutableStateFlow(BridgeMutationPresentation())
     val mutationState: StateFlow<BridgeMutationPresentation> = mutableMutationState.asStateFlow()
+
+    private val keyboardMouseCoordinator = keyboardMouseProfileSource?.let {
+        BridgeKeyboardMouseCoordinator(
+            PinnedBridgeKeyboardMouseGateway(it), viewModelScope,
+            keyboardMouseDirectState ?: BridgeKeyboardMouseDirectStateHolder(),
+            keyboardMouseDirectDataPlane,
+            mouseInputPreferencesStore,
+        )
+    }
+    private val fallbackKeyboardMouse = MutableStateFlow(BridgeKeyboardMousePresentation())
+    val keyboardMouseState: StateFlow<BridgeKeyboardMousePresentation> =
+        keyboardMouseCoordinator?.state ?: fallbackKeyboardMouse.asStateFlow()
 
     private val mutableHistoryActivationState =
         MutableStateFlow(BridgeHistoryActivationPresentation())
@@ -426,8 +452,61 @@ class Nice64ViewModel internal constructor(
         }
     }
 
-    fun selectFirmware(target: BridgeFirmwareTarget) =
+    fun selectFirmware(target: BridgeFirmwareTarget) {
+        keyboardMouseCoordinator?.modeTransitionStarting()
+        if (target != BridgeFirmwareTarget.CONTROLLER) {
+            controllerInputCoordinator?.neutralize()
+            controllerInputCoordinator?.setEnabled(false)
+            controllerSenderCoordinator?.prepareCleanStop()
+            viewModelScope.launch {
+                controllerSenderCoordinator?.stop(
+                    cleanCertain = true,
+                    authorityStillUsable = ::controllerSenderAuthorityUsable,
+                )
+                publishControllerDataPlane(BridgeControllerDataPlanePresentation())
+            }
+        }
         submitMutation(BridgeMutationCommand.Firmware(target))
+    }
+
+    fun updateKeyboardMouseDevices(devices: List<AndroidKeyboardMouseDevice>) =
+        keyboardMouseCoordinator?.updateDevices(devices)
+
+    fun selectKeyboardSource(source: AndroidInputSource) =
+        keyboardMouseCoordinator?.selectKeyboardSource(source)
+
+    fun selectPointerSource(source: AndroidInputSource) =
+        keyboardMouseCoordinator?.selectPointerSource(source)
+
+    fun handleKeyboardMouseKeyEvent(event: KeyEvent): Boolean =
+        keyboardMouseCoordinator?.physicalKey(event) == true
+
+    fun handleKeyboardMouseMotionEvent(event: MotionEvent): Boolean =
+        keyboardMouseCoordinator?.physicalPointer(event) == true
+
+    fun keyboardMousePointerCaptureChanged(captured: Boolean) =
+        keyboardMouseCoordinator?.pointerCaptureChanged(captured)
+
+    fun setOnScreenKeyboardKey(key: Nice64LogicalKey, down: Boolean) =
+        keyboardMouseCoordinator?.onScreenKey(key, down)
+
+    fun addOnScreenPointerDelta(dx: Int, dy: Int) =
+        keyboardMouseCoordinator?.onScreenPointer(dx, dy)
+
+    fun setMouseInvertX(enabled: Boolean) =
+        keyboardMouseCoordinator?.setPointerInvertX(enabled)
+
+    fun setMouseInvertY(enabled: Boolean) =
+        keyboardMouseCoordinator?.setPointerInvertY(enabled)
+
+    fun setOnScreenPointerButton(left: Boolean?, right: Boolean?) =
+        keyboardMouseCoordinator?.onScreenButton(left, right)
+
+    fun refreshKeyboardLeds() = keyboardMouseCoordinator?.refreshLeds()
+
+    fun keyboardMouseForegroundLost() = keyboardMouseCoordinator?.foregroundLost()
+
+    fun keyboardMouseForegroundReturned() = keyboardMouseCoordinator?.foregroundReturned()
 
     fun selectAccessory(target: BridgeAccessoryTarget) =
         submitMutation(BridgeMutationCommand.Accessory(target))
@@ -933,6 +1012,7 @@ class Nice64ViewModel internal constructor(
     }
 
     override fun onCleared() {
+        keyboardMouseCoordinator?.close()
         mappingCaptureTimeout?.cancel()
         controllerMappingEditor?.discardAndClose()
         controllerInputCoordinator?.close()
@@ -959,6 +1039,12 @@ class Nice64ViewModel internal constructor(
         allowFailedSenderReplacement: Boolean = false,
     ) {
         mutableDashboardState.value = value
+        keyboardMouseCoordinator?.updateBridgeState(
+            value.state.value,
+            value.profileId,
+            value.currentSession.value?.sessionId,
+            allowFailedSenderReplacement,
+        )
         val sessionId = value.currentSession.value?.sessionId
         val authoritative = value.controller.value
         if (sessionId != null && authoritative?.sessionId == sessionId) {

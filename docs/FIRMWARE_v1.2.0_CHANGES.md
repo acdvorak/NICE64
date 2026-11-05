@@ -19,7 +19,7 @@ firmware/unified-firmware-v1.2.0/NICE64-Universal-Firmware-v1.2.0.uf2
 SHA-256:
 
 ```text
-81A7266CF008ECC3EC665FC4D916EFBAF4BF8DE742930508E8905DE057FF7732
+95C6F83D84FDC32C4E1ADCA638A37B1BB06F56E897B43658DF09D5153FEE2359
 ```
 
 ## New and matured capabilities
@@ -30,6 +30,12 @@ SHA-256:
 - Reliable ordered UDP infrastructure for Network Pak Quick on port 6465.
 - One-way `LATEST_STATE` receive path for low-latency complete controller-state
   replacement without per-update ACKs, retries, or backlog.
+- Standalone Keyboard / Mouse service with RandNET Keyboard and N64 Mouse
+  selection while preserving the Controller/accessory role boundary.
+- Typed direct-mobile Keyboard held-state and Mouse cumulative-pointer packets
+  on Core1, preserving the existing Controller `LATEST_STATE` payload.
+- A 250 ms fail-neutral timeout for direct Keyboard/Mouse state so a missing
+  final datagram cannot leave a key or button held indefinitely.
 - Bounded session ownership so a retired controller sender lifetime cannot
   regain authority after a legitimate replacement session.
 - Core1 ownership of USB, line dispatch, controller publication, CYW43/lwIP,
@@ -65,8 +71,8 @@ SHA-256:
 
 ## Validation observations
 
-- Firmware Release build completed with the 1 MiB boundary guard passing at
-  378,872 bytes.
+- The accepted G2 Release build completed with the 1 MiB boundary guard passing
+  at 387,184 bytes.
 - The embedded `VERSION?` identity reports `1.2.0`.
 - Available hardware validation includes Pokémon Gold and Pokémon Crystal Load
   Max success, Wario Land 2 running through patched Pokémon Stadium for about
@@ -74,6 +80,10 @@ SHA-256:
   retained save.
 - Network Pak browser operation remained functional during the accepted test
   cycle.
+- RandNET Keyboard and N64 Mouse passed the dedicated diagnostic-ROM hardware
+  suite. Android direct Mouse input was validated in Mario Artist. Pokémon
+  Stadium 2 GB Tower / Transfer Pak and Star Fox 64 / standard Controller
+  regressions passed on the same firmware.
 
 These are validation observations, not universal performance guarantees.
 

@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\..\BridgeHistoryService.cs" Link="BridgeHistoryService.cs" />
+    <Compile Include="..\..\BridgeApiV1HistoryProjection.cs" Link="BridgeApiV1HistoryProjection.cs" />
+    <Compile Include="..\..\BridgeApiV1HistoryItemResolver.cs" Link="BridgeApiV1HistoryItemResolver.cs" />
+  </ItemGroup>
+</Project>

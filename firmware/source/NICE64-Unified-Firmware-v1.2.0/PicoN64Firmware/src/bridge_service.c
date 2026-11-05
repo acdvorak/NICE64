@@ -449,16 +449,23 @@ bool bridge_service_handle_line(const char *line,
     return line[0] != '\0';
 }
 
+typedef struct {
+    const nice64_response_sink_t *response;
+    bridge_personality_line_handler_fn personality_handler;
+} bridge_usb_dispatch_context_t;
+
 static void bridge_service_dispatch_usb_line(void *context, const char *line) {
-    const nice64_response_sink_t *response = context;
+    const bridge_usb_dispatch_context_t *dispatch = context;
+    const nice64_response_sink_t *response = dispatch->response;
     if (!nice64_tcp_usb_command_allowed(line)) {
         nice64_response_puts(response, "NICE64|BUSY|OWNER=TCP");
         return;
     }
-    bridge_line_dispatch(line, response, bridge_service_handle_line);
+    bridge_line_dispatch(line, response, dispatch->personality_handler);
 }
 
-void bridge_service_poll(void) {
+void bridge_service_poll_with_handler(
+    bridge_personality_line_handler_fn personality_handler) {
     static char line[600];
     static nice64_line_framer_t framer;
     static bool initialized = false;
@@ -469,6 +476,15 @@ void bridge_service_poll(void) {
     }
 
     const nice64_response_sink_t *response = nice64_usb_response_sink();
-    nice64_usb_poll_lines(&framer, bridge_service_dispatch_usb_line, (void *)response);
+    const bridge_usb_dispatch_context_t context = {
+        .response = response,
+        .personality_handler = personality_handler,
+    };
+    nice64_usb_poll_lines(&framer, bridge_service_dispatch_usb_line,
+                          (void *)&context);
+}
+
+void bridge_service_poll(void) {
+    bridge_service_poll_with_handler(bridge_service_handle_line);
 }
 

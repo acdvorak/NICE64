@@ -25,6 +25,7 @@ internal enum class BridgeRemoteSection(val label: String) {
     BRIDGE("Bridge"),
     HISTORY("History"),
     CONTROLLERS("Controllers"),
+    INPUT("Keyboard / Mouse"),
 }
 
 @Composable

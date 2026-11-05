@@ -4,6 +4,7 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.hardware.input.InputManager
 import android.os.Bundle
 import android.provider.Settings
 import android.view.KeyEvent
@@ -68,6 +69,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.melfegor.nice64.core.model.BridgePairingMetadata
 import com.melfegor.nice64.api.BridgeDashboardRepository
 import com.melfegor.nice64.api.BridgeDashboardSnapshot
+import com.melfegor.nice64.api.BridgeKeyboardMousePresentation
+import com.melfegor.nice64.api.AndroidMouseInputPreferencesStore
 import com.melfegor.nice64.api.BridgeMutationPresentation
 import com.melfegor.nice64.api.BridgeSemanticMutationCoordinator
 import com.melfegor.nice64.api.BridgeHistoryActivationCoordinator
@@ -77,6 +80,8 @@ import com.melfegor.nice64.api.BridgeControllerPrimaryPresentation
 import com.melfegor.nice64.api.AndroidBridgeControllerNetworkEnvironment
 import com.melfegor.nice64.api.BridgeControllerDataPlanePresentation
 import com.melfegor.nice64.api.BridgeLatestStateSenderCoordinator
+import com.melfegor.nice64.api.BridgeKeyboardMouseDirectStateHolder
+import com.melfegor.nice64.api.AndroidBridgeKeyboardMouseDirectDataPlane
 import com.melfegor.nice64.api.BridgeLatestControllerStateHolder
 import com.melfegor.nice64.api.BridgeControllerHumanInputCoordinator
 import com.melfegor.nice64.api.BridgeControllerInputPresentation
@@ -92,6 +97,8 @@ import com.melfegor.nice64.api.ControllerProfileRepositoryFactoryV1
 import com.melfegor.nice64.api.PersistedControllerProfileUiRepository
 import com.melfegor.nice64.api.LiveControllerProfileCache
 import com.melfegor.nice64.api.StoredActiveBridgeProfileSource
+import com.melfegor.nice64.api.ActiveBridgeProfileSource
+import com.melfegor.nice64.api.enumerateAndroidKeyboardMouseDevices
 import com.melfegor.nice64.pairing.AndroidPairingPresentationRepository
 import com.melfegor.nice64.pairing.CameraPermissionState
 import com.melfegor.nice64.pairing.PairingPresentationRepository
@@ -113,8 +120,9 @@ import com.melfegor.nice64.ui.theme.Nice64Spacing
 import com.melfegor.nice64.ui.theme.Nice64Theme
 import java.io.File
 
-class MainActivity : ComponentActivity() {
+class MainActivity : ComponentActivity(), InputManager.InputDeviceListener {
     private lateinit var model: Nice64ViewModel
+    private lateinit var inputManager: InputManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -127,26 +135,60 @@ class MainActivity : ComponentActivity() {
             BridgeSemanticMutationCoordinator(activeProfileSource),
             BridgeHistoryActivationCoordinator(activeProfileSource),
             BridgeControllerPrimaryCoordinator(activeProfileSource),
+            activeProfileSource,
             applicationContext,
         )
         model = ViewModelProvider(this, factory)[Nice64ViewModel::class.java]
+        inputManager = getSystemService(InputManager::class.java)
+        inputManager.registerInputDeviceListener(this, null)
+        window.decorView.setOnCapturedPointerListener { _, event ->
+            ::model.isInitialized && model.handleKeyboardMouseMotionEvent(event)
+        }
+        refreshKeyboardMouseDevices()
         setContent { Nice64Root(model = model) }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (::model.isInitialized) refreshKeyboardMouseDevices()
+    }
+
+    override fun onDestroy() {
+        if (::inputManager.isInitialized) inputManager.unregisterInputDeviceListener(this)
+        window.decorView.setOnCapturedPointerListener(null)
+        super.onDestroy()
+    }
+
+    override fun onInputDeviceAdded(deviceId: Int) = refreshKeyboardMouseDevices()
+    override fun onInputDeviceRemoved(deviceId: Int) = refreshKeyboardMouseDevices()
+    override fun onInputDeviceChanged(deviceId: Int) = refreshKeyboardMouseDevices()
+
+    private fun refreshKeyboardMouseDevices() {
+        model.updateKeyboardMouseDevices(enumerateAndroidKeyboardMouseDevices())
     }
 
     @SuppressLint("RestrictedApi")
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (::model.isInitialized && model.handleKeyboardMouseKeyEvent(event)) return true
         val boundary = AndroidInputDispatchBoundary.capture(event)
         return if (::model.isInitialized && model.handleControllerKeyEvent(event, boundary)) true
         else super.dispatchKeyEvent(event)
     }
 
-    override fun dispatchGenericMotionEvent(event: MotionEvent): Boolean =
-        dispatchControllerInputWithPrecedence(
+    override fun dispatchGenericMotionEvent(event: MotionEvent): Boolean {
+        if (::model.isInitialized && model.handleKeyboardMouseMotionEvent(event)) return true
+        return dispatchControllerInputWithPrecedence(
             event = event,
             capture = { ::model.isInitialized && model.handleControllerCaptureMotionEvent(it) },
             gameplay = { ::model.isInitialized && model.preDispatchControllerGameplayMotionEvent(it) },
             ui = { super.dispatchGenericMotionEvent(it) },
         )
+    }
+
+    override fun onPointerCaptureChanged(hasCapture: Boolean) {
+        super.onPointerCaptureChanged(hasCapture)
+        if (::model.isInitialized) model.keyboardMousePointerCaptureChanged(hasCapture)
+    }
 }
 
 /** One Activity boundary shared by key and generic-motion controller events. */
@@ -172,6 +214,7 @@ internal class Nice64ViewModelFactory(
     private val mutationCoordinator: BridgeSemanticMutationCoordinator,
     private val historyActivationCoordinator: BridgeHistoryActivationCoordinator,
     private val controllerPrimaryCoordinator: BridgeControllerPrimaryCoordinator,
+    private val keyboardMouseProfileSource: ActiveBridgeProfileSource,
     private val applicationContext: android.content.Context,
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
@@ -190,6 +233,11 @@ internal class Nice64ViewModelFactory(
             AndroidBridgeControllerNetworkEnvironment(applicationContext),
             controllerState = controllerState,
         )
+        val keyboardMouseDirectState = BridgeKeyboardMouseDirectStateHolder()
+        val keyboardMouseDirect = AndroidBridgeKeyboardMouseDirectDataPlane(
+            AndroidBridgeControllerNetworkEnvironment(applicationContext),
+            keyboardMouseDirectState,
+        )
         val controllerProfiles = ControllerProfilePresentationCoordinator(profileRepository)
         val controllerInputTrace = ControllerInputTraceCoordinator(
             File(applicationContext.filesDir, "diagnostics"),
@@ -201,7 +249,9 @@ internal class Nice64ViewModelFactory(
             repository, dashboardRepository, mutationCoordinator,
             historyActivationCoordinator, controllerPrimaryCoordinator,
             controllerSender, controllerInput, controllerProfiles, mappingEditor,
-            liveControllerProfiles, controllerInputTrace,
+            liveControllerProfiles, controllerInputTrace, keyboardMouseProfileSource,
+            keyboardMouseDirectState, keyboardMouseDirect,
+            AndroidMouseInputPreferencesStore.create(applicationContext),
         ) as T
     }
 }
@@ -216,6 +266,7 @@ fun Nice64Root(
     val state by model.pairingState.collectAsStateWithLifecycle()
     val dashboard by model.dashboardState.collectAsStateWithLifecycle()
     val mutation by model.mutationState.collectAsStateWithLifecycle()
+    val keyboardMouse by model.keyboardMouseState.collectAsStateWithLifecycle()
     val historyActivation by model.historyActivationState.collectAsStateWithLifecycle()
     val controllerPrimary by model.controllerPrimaryState.collectAsStateWithLifecycle()
     val controllerDataPlane by model.controllerDataPlaneState.collectAsStateWithLifecycle()
@@ -236,11 +287,13 @@ fun Nice64Root(
     DisposableEffect(lifecycleOwner, model, blackoutPresentation) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
+                model.keyboardMouseForegroundReturned()
                 model.controllerPrimaryForegrounded()
                 model.reconcileMutationOnResume()
                 model.reconcileHistoryActivationOnResume()
             }
             if (event == Lifecycle.Event.ON_STOP) {
+                model.keyboardMouseForegroundLost()
                 blackoutPresentation.exit()
                 handleControllerActivityStop(
                     isChangingConfigurations = activity?.isChangingConfigurations == true,
@@ -256,6 +309,7 @@ fun Nice64Root(
         state = state,
         dashboard = dashboard,
         mutation = mutation,
+        keyboardMouse = keyboardMouse,
         historyActivation = historyActivation,
         controllerPrimary = controllerPrimary,
         controllerDataPlane = controllerDataPlane,
@@ -280,6 +334,19 @@ fun Nice64Root(
             model::selectAccessory,
             model::selectNetworkPakModule,
             model::selectNetworkPakCarrier,
+        ),
+        keyboardMouseActions = KeyboardMouseActions(
+            selectFirmware = model::selectFirmware,
+            selectKeyboardSource = model::selectKeyboardSource,
+            selectPointerSource = model::selectPointerSource,
+            key = model::setOnScreenKeyboardKey,
+            pointer = model::addOnScreenPointerDelta,
+            button = model::setOnScreenPointerButton,
+            invertX = model::setMouseInvertX,
+            invertY = model::setMouseInvertY,
+            refreshLeds = model::refreshKeyboardLeds,
+            capturePointer = { activity?.window?.decorView?.requestPointerCapture() },
+            releasePointer = { activity?.window?.decorView?.releasePointerCapture() },
         ),
         historyActivationActions = BridgeHistoryActivationActions(model::activateHistory),
         controllerPrimaryActions = BridgeControllerPrimaryActions(
@@ -345,6 +412,7 @@ internal fun Nice64App(
     state: PairingPresentationState,
     dashboard: BridgeDashboardSnapshot = BridgeDashboardSnapshot(),
     mutation: BridgeMutationPresentation = BridgeMutationPresentation(),
+    keyboardMouse: BridgeKeyboardMousePresentation = BridgeKeyboardMousePresentation(),
     historyActivation: BridgeHistoryActivationPresentation =
         BridgeHistoryActivationPresentation(),
     controllerPrimary: BridgeControllerPrimaryPresentation =
@@ -372,6 +440,7 @@ internal fun Nice64App(
     onConfirmUnpair: () -> Unit,
     onRefresh: () -> Unit = {},
     mutationActions: BridgeMutationActions = BridgeMutationActions(),
+    keyboardMouseActions: KeyboardMouseActions = KeyboardMouseActions(),
     historyActivationActions: BridgeHistoryActivationActions =
         BridgeHistoryActivationActions(),
     controllerPrimaryActions: BridgeControllerPrimaryActions =
@@ -415,7 +484,7 @@ internal fun Nice64App(
                 Box(Modifier.fillMaxSize().padding(padding)) {
                     when (state.screen) {
                         PairingScreen.PROFILES -> ProfilesScreen(
-                            state, dashboard, mutation, historyActivation,
+                            state, dashboard, mutation, keyboardMouse, historyActivation,
                             controllerPrimary,
                             controllerDataPlane,
                             controllerInput,
@@ -424,7 +493,7 @@ internal fun Nice64App(
                             controllerProfiles,
                             mappingEditor,
                             onBeginPairing, onSelect, onRequestUnpair, onRefresh,
-                            mutationActions, historyActivationActions,
+                            mutationActions, keyboardMouseActions, historyActivationActions,
                             controllerPrimaryActions,
                             controllerInputActions,
                             controllerInputTraceActions,
@@ -478,6 +547,7 @@ private fun ProfilesScreen(
     state: PairingPresentationState,
     dashboard: BridgeDashboardSnapshot,
     mutation: BridgeMutationPresentation,
+    keyboardMouse: BridgeKeyboardMousePresentation,
     historyActivation: BridgeHistoryActivationPresentation,
     controllerPrimary: BridgeControllerPrimaryPresentation,
     controllerDataPlane: BridgeControllerDataPlanePresentation,
@@ -491,6 +561,7 @@ private fun ProfilesScreen(
     onUnpair: (String) -> Unit,
     onRefresh: () -> Unit,
     mutationActions: BridgeMutationActions,
+    keyboardMouseActions: KeyboardMouseActions,
     historyActivationActions: BridgeHistoryActivationActions,
     controllerPrimaryActions: BridgeControllerPrimaryActions,
     controllerInputActions: BridgeControllerInputActions,
@@ -516,13 +587,13 @@ private fun ProfilesScreen(
             Spacer(Modifier.height(Nice64Spacing.md))
             if (state.activeProfileId != null) {
                 BridgeDashboard(
-                    dashboard, mutation, historyActivation, controllerPrimary,
+                    dashboard, mutation, keyboardMouse, historyActivation, controllerPrimary,
                     controllerDataPlane, controllerInput,
                     controllerInputTrace,
                     controllerDiagnostics,
                     controllerProfiles,
                     mappingEditor,
-                    onRefresh, mutationActions, historyActivationActions,
+                    onRefresh, mutationActions, keyboardMouseActions, historyActivationActions,
                     controllerPrimaryActions,
                     controllerInputActions,
                     controllerInputTraceActions,
@@ -588,6 +659,7 @@ private fun ProfilesScreen(
 private fun BridgeDashboard(
     state: BridgeDashboardSnapshot,
     mutation: BridgeMutationPresentation,
+    keyboardMouse: BridgeKeyboardMousePresentation,
     historyActivation: BridgeHistoryActivationPresentation,
     controllerPrimary: BridgeControllerPrimaryPresentation,
     controllerDataPlane: BridgeControllerDataPlanePresentation,
@@ -598,6 +670,7 @@ private fun BridgeDashboard(
     mappingEditor: MappingEditorState,
     onRefresh: () -> Unit,
     mutationActions: BridgeMutationActions,
+    keyboardMouseActions: KeyboardMouseActions,
     historyActivationActions: BridgeHistoryActivationActions,
     controllerPrimaryActions: BridgeControllerPrimaryActions,
     controllerInputActions: BridgeControllerInputActions,
@@ -635,6 +708,13 @@ private fun BridgeDashboard(
                     controllerInputTraceActions,
                     controllerPrimary.mobilePrimary,
                 )
+                return@Column
+            }
+            if (section == BridgeRemoteSection.INPUT) {
+                KeyboardMouseControls(state, mutation, keyboardMouse, keyboardMouseActions)
+                Button(onClick = onRefresh, enabled = !state.refreshing, modifier = Modifier.fillMaxWidth()) {
+                    Text(if (state.refreshing) "Refreshing…" else "Refresh")
+                }
                 return@Column
             }
             BridgeSummary(state)

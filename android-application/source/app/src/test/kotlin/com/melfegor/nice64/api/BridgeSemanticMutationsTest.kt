@@ -10,6 +10,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.Json
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Protocol
@@ -27,6 +28,21 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class BridgeSemanticMutationsTest {
+    @Test
+    fun keyboardAndMouseRequireVerifiedStandaloneState() {
+        val keyboard = BridgeMutationCommand.Firmware(BridgeFirmwareTarget.KEYBOARD)
+        val merelyReported = Json.decodeFromString<BridgeStateDto>(state(firmware = "keyboard"))
+        assertFalse(keyboard.isApplied(merelyReported))
+        val verified = Json.decodeFromString<BridgeStateDto>(state(
+            firmware = "keyboard",
+            role = "standalone",
+            service = "keyboard-mouse",
+            transitionPhase = "completed",
+            transitionTarget = "keyboard",
+        ))
+        assertTrue(keyboard.isApplied(verified))
+    }
+
     @Test
     fun productionMutationExecutorMovesPostAndReconciliationGetOffCallerThread() = runTest {
         val executionThreads = mutableListOf<Pair<String, String>>()
@@ -343,7 +359,7 @@ class BridgeSemanticMutationsTest {
         assertNull(BridgeMutationCommand.Module.fromAuthoritative(
             BridgeModuleInfoDto("../unsafe", "Unsafe"),
         ))
-        assertEquals(setOf("controller", "diagnostics", "network"),
+        assertEquals(setOf("controller", "diagnostics", "network", "keyboard", "mouse"),
             BridgeFirmwareTarget.entries.map { it.symbol }.toSet())
         assertEquals(setOf("tcp", "reliable-udp-quick"),
             BridgeCarrierTarget.entries.map { it.symbol }.toSet())
@@ -416,7 +432,11 @@ class BridgeSemanticMutationsTest {
         accessory: String = "none",
         module: String = "diagnostics",
         carrier: String = "tcp",
-    ) = """{"apiVersion":"v1","captureSequence":7,"capturedUtc":"2026-09-12T00:00:00Z","bridge":{"instanceId":"22222222-2222-2222-2222-222222222222","name":"NICE64"},"device":{"connected":true,"connectionState":"connected","connectionKind":"wifi-tcp","firmwarePersonality":"$firmware","deviceRole":"controller","deviceService":"network","firmwareTransition":{"phase":"idle","target":"unknown","failure":null},"activeAccessory":"$accessory","accessoryTransition":{"phase":"idle","target":"none","failure":null},"selectedNetworkPakTransport":"$carrier","activeNetworkPakTransport":"none","effectiveCapabilities":[]},"controller":{"lastRequestedState":{"controllerType":"n64","buttons":0,"analogX":0,"analogY":0,"analogActive":false,"neutral":true},"lastDeliveredState":null,"deliverySuspended":false,"deliveryPending":false},"controllerPak":{"contentPresent":false,"hasAssociation":false,"associatedFileName":null,"imageSize":0,"lastSuccessfulOperation":"none"},"transferPak":{"contentPresent":false,"hasAssociatedRom":false,"hasAssociatedSave":false,"romFileName":null,"saveFileName":null,"installKind":"none","romLength":0,"expectedSaveLength":0,"metadata":null,"lastSuccessfulOperation":"none"},"persistence":{"kind":"none","active":false,"dirty":false,"flushInProgress":false,"expectedLength":0,"dirtyGeneration":0,"lastSaveUtc":null,"associatedFileName":null},"networkPakModule":{"activeModuleId":"$module","activeModuleName":"Diagnostics","availableModules":[],"persistenceState":"confirmed","lastSelectionOutcome":"requested-module-selected"},"wifi":{"deviceStatusKnown":true,"configured":true,"connected":true,"state":"connected","mode":"station","link":"up","lastOperation":"none","lastOperationOutcome":"none"},"operation":${operation(0, "none", "idle")}}"""
+        role: String = "controller",
+        service: String = "network",
+        transitionPhase: String = "idle",
+        transitionTarget: String = "unknown",
+    ) = """{"apiVersion":"v1","captureSequence":7,"capturedUtc":"2026-09-12T00:00:00Z","bridge":{"instanceId":"22222222-2222-2222-2222-222222222222","name":"NICE64"},"device":{"connected":true,"connectionState":"connected","connectionKind":"wifi-tcp","firmwarePersonality":"$firmware","deviceRole":"$role","deviceService":"$service","firmwareTransition":{"phase":"$transitionPhase","target":"$transitionTarget","failure":null},"activeAccessory":"$accessory","accessoryTransition":{"phase":"idle","target":"none","failure":null},"selectedNetworkPakTransport":"$carrier","activeNetworkPakTransport":"none","effectiveCapabilities":[]},"controller":{"lastRequestedState":{"controllerType":"n64","buttons":0,"analogX":0,"analogY":0,"analogActive":false,"neutral":true},"lastDeliveredState":null,"deliverySuspended":false,"deliveryPending":false},"controllerPak":{"contentPresent":false,"hasAssociation":false,"associatedFileName":null,"imageSize":0,"lastSuccessfulOperation":"none"},"transferPak":{"contentPresent":false,"hasAssociatedRom":false,"hasAssociatedSave":false,"romFileName":null,"saveFileName":null,"installKind":"none","romLength":0,"expectedSaveLength":0,"metadata":null,"lastSuccessfulOperation":"none"},"persistence":{"kind":"none","active":false,"dirty":false,"flushInProgress":false,"expectedLength":0,"dirtyGeneration":0,"lastSaveUtc":null,"associatedFileName":null},"networkPakModule":{"activeModuleId":"$module","activeModuleName":"Diagnostics","availableModules":[],"persistenceState":"confirmed","lastSelectionOutcome":"requested-module-selected"},"wifi":{"deviceStatusKnown":true,"configured":true,"connected":true,"state":"connected","mode":"station","link":"up","lastOperation":"none","lastOperationOutcome":"none"},"operation":${operation(0, "none", "idle")}}"""
 
     private fun body(request: Request): String = Buffer().use { buffer ->
         request.body?.writeTo(buffer)

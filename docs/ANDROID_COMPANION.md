@@ -1,13 +1,13 @@
 # NICE64 Android Companion
 
-The NICE64 Android companion works with NICE64 Bridge v1.8.0 and Universal
-Firmware v1.2.0. The exported APK is an accepted frozen build with project
-version identity `0.1.0-dev`, minimum Android API 26, and target API 36.
+The NICE64 Android companion and packaged debug APK are v1.2.0 (`versionCode`
+2). The companion is packaged with Bridge v1.9.0 and the Universal Firmware
+v1.3.0 release candidate. Minimum Android API is 26 and target API is 36.
 
 ## Install and pair
 
 1. Install `android-application/NICE64-Android-Companion.apk` on Android.
-2. Start Bridge v1.8.0 and connect it to NICE64/Pico.
+2. Start Bridge v1.9.0 and connect it to NICE64/Pico.
 3. In Bridge API settings, select **LocalNetwork**, choose the exact trusted-LAN
    IPv4 interface, and apply the setting.
 4. Open the Bridge onboarding QR presentation and scan it from the Android app.
@@ -24,11 +24,31 @@ fingerprint. Re-pair after an intentional Bridge TLS-identity reset.
 N64 -> NICE64/Pico -> Bridge
 
 Android management -> authenticated, pinned Bridge HTTPS API
-Android controller state -> direct UDP LATEST_STATE -> NICE64/Pico
+Android Controller state -> direct UDP LATEST_STATE -> NICE64/Pico
+Android Keyboard/Mouse state -> direct typed UDP LATEST_STATE -> NICE64/Pico
 ```
 
 Bridge remains the management and controller-Primary authority. Gameplay
-controller packets are not relayed through Bridge or its HTTP API.
+Controller, Keyboard, and Mouse gameplay packets are not relayed through Bridge
+or its HTTP API. Network Pak remains Bridge-mediated. RandNET Keyboard LED state
+returns from Pico through the Bridge API.
+
+## RandNET Keyboard and N64 Mouse
+
+The companion can request Controller, RandNET Keyboard, or N64 Mouse through
+the Bridge firmware API. It waits for the Bridge to verify the completed Pico
+reboot/reconnect before starting input.
+
+Keyboard input is complete held logical-key state, not text or Unicode. N64
+Mouse input is relative movement with persistent buttons and cumulative signed
+totals, so a newer packet preserves motion across a lost intermediate packet.
+Both physical Android devices and on-screen providers are supported.
+
+Android physical mouse and trackpad coordinates use positive Y downward. The
+client normalizes that native convention before cumulative totals advance.
+Persistent **Invert X** and **Invert Y** settings are optional client-side
+preferences layered on top of the natural mapping; firmware performs no user
+preference inversion.
 
 ## Controller authority and sources
 
@@ -96,4 +116,4 @@ as Android accessory-selection controls.
 
 SHA-256:
 
-`28D9E16DBD94E4FC07B32033DE84C621DE50E2A60C7F8D0D2BD87A5E0BF897CC`
+`3A54F6DC39F6477D8026BF371A467C91FB67A793BB771E92003257491C7177F8`

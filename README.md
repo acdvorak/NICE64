@@ -3,15 +3,20 @@
 NICE64 connects a real Nintendo 64 controller port to a Windows Bridge through
 Pico 2 W firmware. The current release stack combines normal
 controller/accessory operation, Diagnostics, Network Pak, USB, Wi-Fi/TCP, and
-Product Quick Mode over reliable ordered UDP. Bridge v1.8.0 also provides
-one-way `LATEST_STATE` wireless controller delivery, an optional authenticated
-API, and integration with the NICE64 Android companion.
+Product Quick Mode over reliable ordered UDP. Bridge v1.9.0 also provides
+one-way `LATEST_STATE` wireless Controller delivery, an optional authenticated
+API, RandNET Keyboard and N64 Mouse standalone personalities, and integration
+with the NICE64 Android companion.
 
 ## Current versions and status
 
-- **Universal Firmware:** v1.2.0 final release — `firmware/unified-firmware-v1.2.0/`
-- **NICE64 Bridge:** v1.8.0 — `bridge-application/nice64-bridge-v1.8.0/`
-- **NICE64 Android companion:** accepted frozen build (`0.1.0-dev` project identity) — `android-application/`
+- **Universal Firmware:** v1.3.0 release candidate — hardware validated —
+  `firmware/unified-firmware-v1.3.0/`
+- **Hardware-validated firmware reference:** v1.2.0 G2 —
+  `firmware/unified-firmware-v1.2.0/`
+- **NICE64 Bridge:** v1.9.0 — `bridge-application/nice64-bridge-v1.9.0/`
+- **NICE64 Android companion:** v1.2.0 (`versionCode` 2), debug-signed —
+  `android-application/`
 - **NICE Browser:** v1.4.1 — `rom/NICE-Browser-v1.4.1/`
 - **RUDP-C carrier:** physically accepted and frozen
 - **Network Pak TCP:** supported reference transport
@@ -23,9 +28,10 @@ The earlier v1.4 Bridge and Browser v1.4.0 layout remains under the existing
 `rom/NICE-Browser-v1.4.1/`. Historical Network Pak Gold and Regular/Normal Gold
 firmware remain unchanged.
 
-Bridge v1.8.0 and the Android companion retain Universal Firmware v1.2.0.
-These are separate version identities; Bridge 1.8 does not require or imply a
-firmware update beyond v1.2.0.
+The v1.3.0 UF2 was compiled from the accepted G2 functional source with the
+approved version-only declarations. Build, static validation, and extensive
+real-hardware use passed. The preserved v1.2.0 G2 UF2 remains the prior
+known-good physical reference.
 
 ## Repository layout
 
@@ -33,20 +39,24 @@ firmware update beyond v1.2.0.
 NICE64/
 |-- android-application/
 |-- bridge-application/
+|   |-- nice64-bridge-v1.9.0/
 |   |-- nice64-bridge-v1.8.0/
 |   `-- Legacy/
 |-- configuration/
 |-- docs/
 |-- examples/
 |-- firmware/
+|   |-- unified-firmware-v1.3.0/
 |   |-- unified-firmware-v1.2.0/
 |   |-- source/
+|   |   |-- NICE64-Unified-Firmware-v1.3.0/
 |   |   `-- NICE64-Unified-Firmware-v1.2.0/
 |   `-- Legacy/
 |       |-- network-pak-gold/
 |       `-- regular-gold-normal/
 |-- hardware/
 |-- rom/
+|   |-- keyboard-mouse-test/
 |   |-- NICE-Browser-v1.4.1/
 |   `-- Legacy/
 |-- CHECKSUMS_SHA256.txt
@@ -59,19 +69,28 @@ preserved.
 
 ## Quick start
 
-1. Flash the v1.2.0 UF2 from `firmware/unified-firmware-v1.2.0/` to a Pico 2 W.
+1. For release-candidate testing, flash the v1.3.0 UF2 from
+   `firmware/unified-firmware-v1.3.0/` to a Pico 2 W. Use the preserved v1.2.0
+   G2 artifact when the hardware-validated baseline is required.
 2. Start
-   `bridge-application/nice64-bridge-v1.8.0/application/PicoSwitchController.exe`.
+   `bridge-application/nice64-bridge-v1.9.0/application/PicoSwitchController.exe`.
 3. Connect over USB and select the NICE64 COM port.
 4. Provision Wi-Fi over USB and note the DHCP address.
 5. Use Controller personality for normal controller, Controller Pak, or
    Transfer Pak operation.
-6. Use Network personality for Network Pak. Connect by manual IPv4 over TCP
+6. Use Standalone Keyboard / Mouse for RandNET Keyboard or N64 Mouse. The
+   Bridge verifies the selected firmware mode before forwarding input.
+7. Use Network personality for Network Pak. Connect by manual IPv4 over TCP
    port 6464, then explicitly select TCP or Quick Mode (Reliable UDP, port
    6465).
 
 USB remains the provisioning and recovery path. Quick Mode does not silently
 fall back to TCP.
+
+Personality requests are volatile one-shot reboot selections rather than flash
+preferences. Removing Pico power and starting again returns Universal Firmware
+to Controller personality, providing a straightforward recovery path from a
+stuck standalone device.
 
 ### Android companion
 
@@ -80,7 +99,10 @@ Bridge's local onboarding workflow to pair on a trusted LAN. Android management
 traffic uses the authenticated, pinned HTTPS Bridge API. Gameplay controller
 state does not pass through HTTP or the Bridge: while **NICE Mobile Primary** is
 authoritative it travels directly from Android to NICE64/Pico over disposable
-UDP `LATEST_STATE` packets.
+UDP `LATEST_STATE` packets. RandNET Keyboard held state and N64 Mouse cumulative
+relative movement also use the direct Android-to-Pico mobile input data plane
+after the Bridge verifies the requested standalone mode. Keyboard LED state
+returns through Pico and the Bridge API.
 
 Controller authority has exactly two values: **Bridge Primary** and **NICE
 Mobile Primary**. The companion supports Android USB/Bluetooth controllers,
@@ -102,16 +124,21 @@ Network PIO/strict-bitbang policy. Core1 owns USB, controller-state publication,
 CYW43/lwIP, Wi-Fi, TCP, reliable UDP, persistence, and Bridge command service.
 Joybus, Core0 timing, PIO programs, and accessory semantics are frozen.
 
-Universal Firmware supports Controller, Standalone Diagnostics, and Standalone
-Network personalities in one image. The Bridge verifies and controls the active
-personality, manages controller mapping/calibration, transfers GB/GBC ROM and
-save data, manages Controller Pak images, and hosts Network Pak modules.
+Universal Firmware supports Controller, Standalone Diagnostics, Standalone
+Network, and Standalone Keyboard / Mouse personalities in one image. Keyboard /
+Mouse selects either RandNET Keyboard or N64 Mouse. The Bridge verifies and
+controls the active personality, manages controller mapping/calibration,
+transfers GB/GBC ROM and save data, manages Controller Pak images, and hosts
+Network Pak modules.
 
 The frozen reliable UDP tuple is wire version 1, RELIABLE_ORDERED class 0,
 window 8, physical cap 2, 512-byte payload, 40 ms RTO, four retransmissions, and
 UDP port 6465. Delivery class 1, `LATEST_STATE`, carries disposable complete
-controller state with session/sequence protection; it is not a reliable event
-stream and does not change Network Pak's reliable-ordered carrier.
+direct human-input state with session/sequence protection. Controller and
+Keyboard use disposable complete state; Mouse uses cumulative movement totals
+so replacement packets do not lose relative motion. `LATEST_STATE` is not a
+reliable event stream and does not change Network Pak's reliable-ordered
+carrier.
 
 RUDP carrier capability is not Network Pak or ROM end-to-end throughput.
 
@@ -120,8 +147,13 @@ RUDP carrier capability is not Network Pak or ROM end-to-end throughput.
 Normal Product Quick Mode operation is validated on real N64 hardware, and
 RUDP-C remains physically accepted and frozen. Transfer Pak save persistence is
 event-driven in Bridge v1.8.0, eliminating periodic Bridge save polling during
-gameplay. See [Known Issues and Deferred Work](docs/KNOWN_ISSUES.md) for
-remaining lifecycle and throughput limitations.
+gameplay. RandNET Keyboard and N64 Mouse passed diagnostic-ROM hardware tests
+and extensive real use, including Keyboard operation with a Windows CE
+port/side project and Mouse operation with Mario Studio on 64DD. Android direct
+Mouse input was also validated with Mario Artist, while Transfer Pak and
+standard Controller regressions passed with Pokémon Stadium 2 GB Tower and Star
+Fox 64. See [Known Issues and Deferred Work](docs/KNOWN_ISSUES.md) for remaining
+lifecycle and throughput limitations.
 
 ## Documentation
 
@@ -151,7 +183,7 @@ ROM documentation remains with each packaged ROM. The current Browser is at
 Bridge requires the .NET 9 SDK on Windows:
 
 ```powershell
-dotnet build bridge-application/nice64-bridge-v1.8.0/source/PicoSwitchController.csproj -c Release
+dotnet build bridge-application/nice64-bridge-v1.9.0/source/PicoSwitchController.csproj -c Release
 ```
 
 Firmware requires CMake, Ninja, the Arm GNU embedded toolchain, and a compatible
@@ -172,8 +204,9 @@ N64 3.3 V to Pico VBUS, VSYS, or Pico 3V3. Hardware files remain under
   transport or release maintenance.
 - Preserve historical firmware and ROM releases.
 - Keep TCP as the explicit reference path during Quick Mode validation.
-- Keep `LATEST_STATE` scoped to disposable current controller state; do not
-  represent it as a reliable event stream or Network Pak carrier.
+- Keep `LATEST_STATE` scoped to direct human-input state; do not represent it
+  as a reliable event stream or Network Pak carrier. Preserve cumulative Mouse
+  totals and complete Controller/Keyboard state semantics.
 - Do not compare synthetic carrier peak rates directly with real Network Pak
   application throughput.
 

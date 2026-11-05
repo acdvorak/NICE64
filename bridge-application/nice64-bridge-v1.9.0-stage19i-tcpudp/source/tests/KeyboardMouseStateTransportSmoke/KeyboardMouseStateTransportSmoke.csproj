@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+    <Compile Include="..\..\BridgeTransport.cs" Link="BridgeTransport.cs" />
+    <Compile Include="..\..\FirmwareModeControl.cs" Link="FirmwareModeControl.cs" />
+    <Compile Include="..\..\BridgeDeviceState.cs" Link="BridgeDeviceState.cs" />
+    <Compile Include="..\..\KeyboardMouseStateTransport.cs" Link="KeyboardMouseStateTransport.cs" />
+    <Compile Include="..\..\BridgeKeyboardMouseApi.cs" Link="BridgeKeyboardMouseApi.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="System.IO.Ports" Version="9.0.0" />
+  </ItemGroup>
+</Project>

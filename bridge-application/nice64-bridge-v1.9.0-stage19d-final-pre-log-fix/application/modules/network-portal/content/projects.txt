@@ -1,0 +1,9 @@
+NICE64 PROJECTS
+
+Network Pak Portal
+Static Content Bridge
+Layer 2 Stream Transport
+
+Future:
+URL-backed pages
+FrogFind-style search proxy

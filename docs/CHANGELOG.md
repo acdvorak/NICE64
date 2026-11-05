@@ -1,7 +1,37 @@
 # Changelog
 
+## Universal Firmware v1.3.0 RC / Bridge v1.9.0 / Android Companion v1.2.0
+
+- Built and locally packaged Android Companion v1.2.0 (`versionCode` 2) as a
+  debug-signed APK after 338/338 JVM tests and lint passed.
+- Built and locally packaged Bridge v1.9.0 with unchanged runtime behavior and
+  API v1 contracts.
+- Built Universal Firmware v1.3.0 for Pico 2 W from the accepted G2 functional
+  source with version-only declarations. Build, flash-boundary,
+  embedded-version, and source-lineage checks passed.
+- Firmware v1.3.0 is a **hardware-validated release candidate**. Extended
+  real-hardware use includes N64 Mouse with Mario Studio on 64DD and RandNET
+  Keyboard with a Windows CE port/side project. The preserved v1.2.0 G2 UF2
+  remains the prior hardware-validated reference.
+- NICE Browser remains v1.4.1.
+
 ## Universal Firmware v1.2.0 / Bridge v1.8.0 / NICE Browser v1.4.1 / Android companion
 
+- Added hardware-validated standalone RandNET Keyboard and N64 Mouse
+  personalities and their libdragon diagnostic ROM/source.
+- Documented the existing unified-firmware recovery behavior: personality
+  requests are volatile one-shot watchdog-reboot selections, and a cold boot
+  after power removal defaults to Controller. This behavior is unchanged from
+  the retained v1.1.0 unified firmware onward.
+- Added typed direct Android-to-Pico Keyboard and cumulative Mouse input while
+  retaining Bridge-mediated management, verification, endpoint authority, and
+  keyboard LED reporting. Network Pak remains Bridge-mediated.
+- Added explicit foreground Windows Raw Input capture with Any/Specific source
+  selection, `Alt+Left` release, and fail-neutral lifecycle handling.
+- Added persistent client-side Invert X/Invert Y settings. Android normalizes
+  its down-positive pointer convention before inversion; Windows retains its
+  physically validated native convention. Firmware performs no preference
+  inversion.
 - Added the accepted Android companion export with pinned HTTPS pairing,
   Bridge/History/Controllers navigation, authoritative operation state, and
   exactly two controller Primary values: Bridge Primary and NICE Mobile Primary.
@@ -20,8 +50,9 @@
 - Promoted NICE Browser v1.4.1 from the confirmed working Summercart v1.4.0
   staged-bulk/carrier-response-gate lineage. The promotion changes Browser
   release identity only and introduces no new protocol or functional behavior.
-- Universal Firmware remains v1.2.0; this release-preparation pass makes no
-  firmware change.
+- Universal Firmware remains v1.2.0. The current artifact is the
+  hardware-validated G2 build; the later mouse-orientation correction changed
+  Android and Windows clients only.
 
 See [Bridge v1.8.0 changes](BRIDGE_v1.8.0_CHANGES.md) and
 [Android companion](ANDROID_COMPANION.md).

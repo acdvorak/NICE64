@@ -1,0 +1,20 @@
+{
+  "id": "browser-live",
+  "displayName": "Browser Live",
+  "version": "0.9.0",
+  "author": "NICE64",
+  "description": "Home page and PowerShell-generated live NICE document module for Browser ROM navigation.",
+  "resourcePrefix": "nice://",
+  "defaultResource": "nice://home",
+  "contentRoot": "content",
+  "protocolVersion": 1,
+  "resourcePrefixes": [
+    "nice://",
+    "browser://live",
+    "browser://g/",
+    "browser://u/",
+    "browser://search",
+    "browser://p/",
+    "browser://i/"
+  ]
+}

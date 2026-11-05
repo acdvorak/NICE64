@@ -1,15 +1,16 @@
 # NICE64 Bridge Application
 
-## Current release
+## Current release candidate
 
-Bridge v1.8.0 is the one-Pico-per-instance Windows desktop host for controller
+Bridge v1.9.0 is the one-Pico-per-instance Windows desktop host for controller
 input, firmware and accessory control, Pak content, Wi-Fi provisioning, Network
-Pak services/modules, and the optional authenticated local API.
+Pak services/modules, standalone RandNET Keyboard and N64 Mouse operation, and
+the optional authenticated local API.
 
 Run:
 
 ```text
-bridge-application/nice64-bridge-v1.8.0/application/PicoSwitchController.exe
+bridge-application/nice64-bridge-v1.9.0/application/PicoSwitchController.exe
 ```
 
 For practical setup and operation, see the [Bridge User's Guide](BRIDGE_USER_GUIDE.md).
@@ -30,6 +31,14 @@ option. There is no silent Quick-to-TCP fallback. Wireless controller delivery
 can use one-way `LATEST_STATE` current-state reporting independently of the
 Network Pak reliable-ordered carrier.
 
+Keyboard and Mouse use the same verified firmware-mode service as the desktop
+and API. Windows input is captured explicitly through foreground Raw Input,
+with device identity retained for Any/Specific source selection. `Alt+Left`
+releases capture and is not forwarded. Focus, device, source, mode, connection,
+or application loss publishes neutral state. Invert X and Invert Y are
+client-side pointer preferences; firmware does not implement user-preference
+inversion.
+
 Controller Pak retains its accepted persistence lifecycle. Transfer Pak save
 persistence is event-driven: no periodic `STAT` or background `GBSDUMP` runs
 during gameplay, and the current save is flushed at explicit lifecycle
@@ -45,19 +54,25 @@ images should not be committed or redistributed unintentionally.
 
 ## Status and limitations
 
-The v1.8.0 Release build completes with zero warnings and errors and the
-established non-hardware matrix passes 60/60. Available hardware testing covers
-normal Transfer Pak, Network Pak browser, and wireless controller workflows.
+The synchronized v1.9.0 Release build and applicable Stage F/G host regressions pass. Real
+hardware testing covers RandNET Keyboard and N64 Mouse diagnostics, Android
+direct N64 Mouse input, Mario Artist: Paint Studio, Pokémon Stadium 2 GB Tower
+through Transfer Pak, Star Fox 64 controller input, and Network Pak workflows.
 TCP remains the Network Pak reference carrier; the release does not claim every
 historical transport-performance issue is solved.
 
 ## Android companion
 
-Bridge v1.8.0 provides the authoritative HTTPS API, onboarding identity,
+Bridge v1.9.0 provides the authoritative HTTPS API, onboarding identity,
 History, and controller-Primary boundaries used by the Android companion.
 Management traffic uses the authenticated Bridge API. Under NICE Mobile
 Primary, gameplay controller state travels directly from Android to NICE64/Pico
 over UDP `LATEST_STATE`; it is not relayed by the Bridge HTTP host.
+
+The accepted hybrid data plane also sends Android Keyboard and Mouse human
+input directly to Pico using typed packets, while mode management, endpoint
+authority, status, and keyboard LED reporting remain Bridge-mediated. Network
+Pak remains a Bridge service/provider path.
 
 See [Android companion](ANDROID_COMPANION.md) for installation, pairing,
 controller profiles, touch controls, and Controller Blackout Mode.

@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <UseWindowsForms>true</UseWindowsForms>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="QRCoder" Version="1.8.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="..\..\BridgeApiAccessMode.cs" Link="BridgeApiAccessMode.cs" />
+    <Compile Include="..\..\BridgeApiLanAddressValidator.cs" Link="BridgeApiLanAddressValidator.cs" />
+    <Compile Include="..\..\BridgeApiTlsIdentityContracts.cs" Link="BridgeApiTlsIdentityContracts.cs" />
+    <Compile Include="..\..\BridgeApiHostContracts.cs" Link="BridgeApiHostContracts.cs" />
+    <Compile Include="..\..\BridgeApiOnboarding.cs" Link="BridgeApiOnboarding.cs" />
+    <Compile Include="..\..\BridgeApiOnboardingPayload.cs" Link="BridgeApiOnboardingPayload.cs" />
+    <Compile Include="..\..\BridgeApiQrRenderer.cs" Link="BridgeApiQrRenderer.cs" />
+  </ItemGroup>
+</Project>

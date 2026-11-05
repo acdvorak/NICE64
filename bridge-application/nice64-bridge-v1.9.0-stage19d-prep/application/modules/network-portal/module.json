@@ -1,0 +1,10 @@
+{
+  "id": "network-portal",
+  "displayName": "Network Portal",
+  "version": "0.9.0",
+  "author": "NICE64",
+  "description": "Default NICE64 Network Pak portal resources.",
+  "resourcePrefix": "bridge://",
+  "defaultResource": "bridge://menu",
+  "contentRoot": "content"
+}

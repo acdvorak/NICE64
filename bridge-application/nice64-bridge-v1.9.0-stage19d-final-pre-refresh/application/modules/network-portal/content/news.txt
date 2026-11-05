@@ -1,0 +1,7 @@
+NICE64 NETWORK NEWS
+
+Portal v0.2 is now content-driven.
+
+The N64 menu is loaded from menu.txt on the desktop bridge.
+
+Edit menu.txt, restart the bridge, and the portal navigation changes without rebuilding the ROM.

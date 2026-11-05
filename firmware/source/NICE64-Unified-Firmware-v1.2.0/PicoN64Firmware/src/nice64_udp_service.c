@@ -7,8 +7,11 @@
 #include "lwip/ip_addr.h"
 #include "lwip/pbuf.h"
 #include "lwip/udp.h"
+#include "keyboard_state.h"
+#include "mobile_input_protocol.h"
 #include "nice64_rudp_codec.h"
 #include "nice64_rudp_engine.h"
+#include "pointer_state.h"
 #include "nice64_network_rudp_adapter.h"
 #include "nice64_latest_state.h"
 #include "pico/cyw43_arch.h"
@@ -33,6 +36,7 @@
 #define RUDPC_MAX_STREAM_BYTES (2u * 1024u * 1024u)
 #define NETWORK_RUDP_BEGIN_LENGTH 12u
 #define RUDPB_LOOP_GAP_BUCKET_COUNT 8u
+#define MOBILE_INPUT_STALE_MS 250u
 
 _Static_assert(RUDPC_STATS_PAYLOAD_LENGTH <= RUDPB_MAX_CONTROL_PAYLOAD,
                "RUDP-C observability snapshot exceeds the diagnostic payload");
@@ -193,6 +197,8 @@ typedef struct {
     uint8_t next_rx;
     bool owner_active;
     bool latest_state_mode;
+    bool mobile_input_fresh;
+    uint32_t mobile_input_last_ms;
     uint32_t owner_session;
     ip_addr_t owner_address;
     uint16_t owner_port;
@@ -786,18 +792,58 @@ static void record_validation(nice64_rudp_validation_t validation) {
 }
 
 static void process_latest_state(const nice64_rudp_header_t *header,
-                                 const uint8_t *payload) {
+                                 const uint8_t *payload,
+                                 const nice64_active_mode_t active_mode) {
     if (header->flags != NICE64_RUDP_FLAG_DATA ||
-        header->ack_base != 0u || header->ack_bitmap != 0u ||
-        header->payload_length != NICE64_LATEST_STATE_CONTROLLER_BYTES) {
+        header->ack_base != 0u || header->ack_bitmap != 0u) {
         state.diagnostics.invalid_headers =
             saturating_add(state.diagnostics.invalid_headers, 1u);
         return;
     }
 
-    (void)nice64_latest_state_receive_controller(
-        header->session_id, header->sequence, payload,
-        header->payload_length);
+    bool recognized = false;
+    bool accepted = false;
+    if (active_mode.role == NICE64_ROLE_CONTROLLER) {
+        if (header->payload_length == NICE64_LATEST_STATE_CONTROLLER_BYTES) {
+            recognized = true;
+            accepted = nice64_latest_state_receive_controller(
+                header->session_id, header->sequence, payload,
+                header->payload_length);
+        }
+    } else if (active_mode.role == NICE64_ROLE_STANDALONE &&
+               active_mode.standalone_service == NICE64_SERVICE_KEYBOARD_MOUSE) {
+        const nice64_keyboard_mouse_device_t device =
+            role_manager_keyboard_mouse_device();
+        if (device == NICE64_KEYBOARD_MOUSE_KEYBOARD) {
+            nice64_logical_key_t keys[NICE64_KEY_COUNT - 1u];
+            size_t count = 0u;
+            if (nice64_mobile_input_decode_keyboard(
+                    payload, header->payload_length, keys,
+                    NICE64_KEY_COUNT - 1u, &count)) {
+                recognized = true;
+                accepted = keyboard_state_accept_held(
+                    header->session_id, header->sequence, keys, count);
+            }
+        } else if (device == NICE64_KEYBOARD_MOUSE_MOUSE) {
+            nice64_mobile_pointer_t pointer;
+            if (nice64_mobile_input_decode_pointer(
+                    payload, header->payload_length, &pointer)) {
+                recognized = true;
+                accepted = pointer_state_accept_cumulative(
+                    header->session_id, header->sequence, pointer.buttons,
+                    pointer.total_x, pointer.total_y);
+            }
+        }
+    }
+    if (!recognized) {
+        state.diagnostics.invalid_headers =
+            saturating_add(state.diagnostics.invalid_headers, 1u);
+        return;
+    }
+    if (accepted && active_mode.role == NICE64_ROLE_STANDALONE) {
+        state.mobile_input_fresh = true;
+        state.mobile_input_last_ms = now_ms();
+    }
 }
 
 static void process_slot(rudpb_rx_slot_t *slot) {
@@ -833,6 +879,9 @@ static void process_slot(rudpb_rx_slot_t *slot) {
     const bool controller_mode = active_mode.role == NICE64_ROLE_CONTROLLER;
     const bool network_mode = active_mode.role == NICE64_ROLE_STANDALONE &&
                               active_mode.standalone_service == NICE64_SERVICE_NETWORK;
+    const bool keyboard_mouse_mode =
+        active_mode.role == NICE64_ROLE_STANDALONE &&
+        active_mode.standalone_service == NICE64_SERVICE_KEYBOARD_MOUSE;
     if (validation == NICE64_RUDP_UNSUPPORTED_DELIVERY_CLASS) {
         if (network_mode) send_control(slot, &header, RUDPB_UNSUPPORTED_CLASS);
     } else if (validation == NICE64_RUDP_INVALID_DELIVERY_CLASS) {
@@ -840,7 +889,8 @@ static void process_slot(rudpb_rx_slot_t *slot) {
     } else if (validation == NICE64_RUDP_VALID) {
         uint8_t *payload = &slot->wire[NICE64_WIRELESS_HEADER_LENGTH];
         if (header.delivery_class == NICE64_DELIVERY_LATEST_STATE) {
-            if (controller_mode) process_latest_state(&header, payload);
+            if (controller_mode || keyboard_mouse_mode)
+                process_latest_state(&header, payload, active_mode);
             goto process_complete;
         }
         if (!network_mode) goto process_complete;
@@ -1120,6 +1170,11 @@ static void stop_service(void) {
     }
     clear_owner();
     nice64_latest_state_reset();
+    if (state.mobile_input_fresh) {
+        (void)keyboard_state_publish_held(NULL, 0u);
+        pointer_state_publish_delta(0u, 0, 0);
+    }
+    state.mobile_input_fresh = false;
     state.latest_state_mode = false;
 }
 
@@ -1151,7 +1206,11 @@ void nice64_udp_service_poll(void) {
     const bool controller_mode = mode.role == NICE64_ROLE_CONTROLLER;
     const bool network_mode = mode.role == NICE64_ROLE_STANDALONE &&
                               mode.standalone_service == NICE64_SERVICE_NETWORK;
-    if (!wifi_service_connected() || (!network_mode && !controller_mode)) {
+    const bool keyboard_mouse_mode =
+        mode.role == NICE64_ROLE_STANDALONE &&
+        mode.standalone_service == NICE64_SERVICE_KEYBOARD_MOUSE;
+    if (!wifi_service_connected() ||
+        (!network_mode && !controller_mode && !keyboard_mouse_mode)) {
         stop_service();
     } else {
         if (state.latest_state_mode != controller_mode) {
@@ -1159,6 +1218,13 @@ void nice64_udp_service_poll(void) {
             state.latest_state_mode = controller_mode;
         }
         if (state.pcb == NULL) create_listener();
+        if (keyboard_mouse_mode && state.mobile_input_fresh &&
+            (uint32_t)(now_ms() - state.mobile_input_last_ms) >=
+                MOBILE_INPUT_STALE_MS) {
+            (void)keyboard_state_publish_held(NULL, 0u);
+            pointer_state_publish_delta(0u, 0, 0);
+            state.mobile_input_fresh = false;
+        }
         if (state.owner_active &&
             (uint32_t)(now_ms() - state.owner_last_activity_ms) >=
                 NICE64_RUDPB_OWNER_TIMEOUT_MS) {

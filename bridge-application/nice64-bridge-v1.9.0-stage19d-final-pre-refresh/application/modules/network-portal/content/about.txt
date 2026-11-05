@@ -1,0 +1,7 @@
+NICE64 NETWORK PAK
+
+N64 Terminal
+Pico Transport
+Desktop Browser
+
+Inspired by Randnet

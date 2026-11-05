@@ -23,6 +23,8 @@ enum class BridgeFirmwareTarget(val symbol: String, val displayName: String, val
     CONTROLLER("controller", "Controller", "firmware-mode-controller"),
     DIAGNOSTICS("diagnostics", "Diagnostics", "firmware-mode-diagnostics"),
     NETWORK("network", "Network", "firmware-mode-network"),
+    KEYBOARD("keyboard", "RandNET Keyboard", "firmware-mode-keyboard"),
+    MOUSE("mouse", "N64 Mouse", "firmware-mode-mouse"),
 }
 
 enum class BridgeAccessoryTarget(val symbol: String, val displayName: String) {
@@ -76,7 +78,18 @@ internal sealed class BridgeMutationCommand(
     )
 
     fun isApplied(state: BridgeStateDto): Boolean = when (this) {
-        is Firmware -> state.device.firmwarePersonality == target.symbol
+        is Firmware -> when (target) {
+            BridgeFirmwareTarget.KEYBOARD,
+            BridgeFirmwareTarget.MOUSE -> state.device.connected &&
+                state.device.firmwarePersonality == target.symbol &&
+                state.device.deviceRole == "standalone" &&
+                state.device.deviceService == "keyboard-mouse" &&
+                state.device.firmwareTransition.phase == "completed" &&
+                state.device.firmwareTransition.target == target.symbol &&
+                state.device.firmwareTransition.failure == null
+            else -> state.device.connected &&
+                state.device.firmwarePersonality == target.symbol
+        }
         is Accessory -> state.device.activeAccessory == target.symbol
         is Module -> state.networkPakModule.activeModuleId == moduleId
         is Carrier -> state.device.selectedNetworkPakTransport == target.symbol
@@ -300,7 +313,7 @@ internal class BridgeSemanticMutationCoordinator(
     private val profiles: ActiveBridgeProfileSource,
     private val clients: BridgeSemanticMutationClientFactory =
         PinnedBridgeSemanticMutationClientFactory,
-    private val reconciliationAttempts: Int = 10,
+    private val reconciliationAttempts: Int = 30,
     private val reconciliationDelayMs: Long = 350,
     private val waiter: BridgeMutationDelay = BridgeMutationDelay { delay(it) },
 ) {

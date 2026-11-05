@@ -1,4 +1,7 @@
-# NICE64 Bridge v1.8.0 User's Guide
+# NICE64 Bridge User's Guide
+
+These instructions describe the locally packaged Bridge v1.9.0 release
+candidate.
 
 ## 1. What the Bridge does
 
@@ -10,7 +13,9 @@ Pak GB/GBC content, Network Pak, and an optional local API.
 
 ## 2. Requirements
 
-- NICE64 hardware with a Pico 2 W running Universal Firmware v1.2.0.
+- NICE64 hardware with a Pico 2 W running the Universal Firmware v1.3.0 release
+  candidate. Hardware validation of that newly compiled UF2 remains pending;
+  v1.2.0 G2 is the preserved known-good reference.
 - A Windows PC. The packaged application targets .NET 9 for Windows and includes
   its managed dependencies; install the .NET 9 Desktop Runtime if Windows asks
   for it.
@@ -26,10 +31,10 @@ and wiring documentation.
 Run:
 
 ```text
-bridge-application\nice64-bridge-v1.8.0\application\PicoSwitchController.exe
+bridge-application\nice64-bridge-v1.9.0\application\PicoSwitchController.exe
 ```
 
-The title should report `PicoSwitchController v1.8.0`. Keep the entire
+The title should report `PicoSwitchController v1.9.0`. Keep the entire
 `application` folder together; its DLLs, assets, modules, and runtime files are
 required.
 
@@ -67,12 +72,14 @@ Do not disconnect or power off during a provisioning write.
 
 ## 7. Firmware modes
 
-The unified image provides three personalities:
+The unified image provides Controller plus Standalone personalities:
 
 - **Controller** for controller input, no accessory, Controller Pak, Rumble Pak,
   and Transfer Pak.
 - **Diagnostics** for bounded device diagnostics.
 - **Network** for Network Pak operation.
+- **RandNET Keyboard** for a standalone N64 keyboard device.
+- **N64 Mouse** for a standalone relative-pointer device.
 
 The Bridge automatically requests required firmware changes during accessory
 selection. A mode change can reboot the Pico and replace the USB or TCP control
@@ -110,7 +117,7 @@ release. Recalibrate if the device identity, driver, or physical range changes.
 ## 11. Wireless controller mode
 
 When the Bridge and Pico have a valid Wi-Fi path, controller state can use the
-one-way `LATEST_STATE` UDP path. Bridge v1.8.0 repeatedly reports the current
+one-way `LATEST_STATE` UDP path. Bridge v1.9.0 repeatedly reports the current
 authoritative state instead of sending only input changes. Packets are
 disposable: there is no per-update ACK, retry queue, or reconstruction backlog.
 A new sender session takes ownership, and retired sessions cannot regain it.
@@ -118,6 +125,25 @@ A new sender session takes ownership, and retired sessions cannot regain it.
 Use the debug log to confirm the selected controller delivery path when
 diagnosing input. Network conditions can still affect wireless behavior; no
 fixed latency guarantee is made.
+
+### RandNET Keyboard and N64 Mouse
+
+Choose **Tools > N64 Accessory > RandNET Keyboard** or **N64 Mouse**. The
+checked item reflects verified firmware state after the Pico reboot/reconnect,
+not merely the last command selected.
+
+For Windows input, retain the Keyboard Source or Pointer Source selection and
+enter **N64 Input Capture** explicitly. Capture is foreground-only. Raw Input
+preserves the selected physical device identity while Windows suppression
+applies to the active keyboard or mouse usage class. Press `Alt+Left` to release
+capture; the chord is not forwarded to NICE64. Focus loss, source/device loss,
+mode change, disconnect, or shutdown also releases capture and publishes
+neutral state.
+
+Mouse motion is relative. **Invert X** and **Invert Y** are optional Windows
+client preferences and do not change firmware behavior. Windows retains its
+native input convention; the Android client separately normalizes Android
+pointer coordinates before applying its own inversion preferences.
 
 ## 12. Controller Pak
 
@@ -152,7 +178,7 @@ replace known-good data.
 
 ### Event-driven Transfer Pak saves
 
-Bridge v1.8.0 does not periodically poll `STAT` or perform background
+Bridge v1.9.0 does not periodically poll `STAT` or perform background
 `GBSDUMP` reads during Transfer Pak gameplay. The Pico owns live runtime
 operation. The Bridge reads and persists the current save at these boundaries:
 
@@ -198,29 +224,32 @@ Quick after correcting the problem.
 
 The API host is disabled by default and binds only to IPv4 loopback when
 enabled. It requires a bearer token protected for the current Windows user. The
-public HTTP mutations cover firmware, accessory, Network Pak module, TCP or
-Reliable UDP Quick carrier selection, session-scoped controller Primary, and
-session-scoped History activation. See [Bridge API v1](BRIDGE_API.md).
+public HTTP surface covers verified firmware personalities (including Keyboard
+and Mouse), accessory and Network Pak management, session-scoped controller
+Primary/History, direct mobile endpoint discovery, source-neutral
+Keyboard/Mouse state, and keyboard LEDs. See [Bridge API v1](BRIDGE_API.md).
 
 The API does not expose remote controller streaming, Connect/Disconnect,
 Wi-Fi provisioning, Pak content transfer, firmware upload, or transport tuning.
 
 ### Android companion and controller authority
 
-Bridge v1.8.0 supports the NICE64 Android companion through LocalNetwork HTTPS
+Bridge v1.9.0 supports the NICE64 Android companion through LocalNetwork HTTPS
 and local QR onboarding. Controller authority has exactly two values: **Bridge
 Primary** and **NICE Mobile Primary**. The Bridge remains authoritative.
 
-Android management uses the authenticated Bridge API. Under NICE Mobile
-Primary, Android physical/touch controller state travels directly to the Pico
-over UDP `LATEST_STATE`; it is not streamed through HTTP. See
+Android management uses the authenticated Bridge API. Controller, Keyboard,
+and Mouse human input travels directly to the Pico over UDP after the required
+authority and firmware personality are verified; it is not streamed through
+HTTP during normal companion use. Network Pak and keyboard LED reporting remain
+Bridge-mediated. See
 [Android companion](ANDROID_COMPANION.md).
 
 ## 17. Settings and debug logs
 
 The Bridge stores `picoswitchcontroller.ini` beside the executable. It contains
-desktop settings such as console/input choices, module/carrier selection, and
-debug mode. Analog calibration data is also stored as user-specific runtime
+desktop settings such as console/input choices, module/carrier selection,
+pointer inversion, and debug mode. Analog calibration data is also stored as user-specific runtime
 data near the application. The API token is stored separately at:
 
 ```text
@@ -257,7 +286,7 @@ additional project-specific notes.
 
 ## 19. Compatibility and legacy releases
 
-Bridge v1.8.0 is packaged with Universal Firmware v1.2.0 and preserves the
+Bridge v1.9.0 is packaged with Universal Firmware v1.3.0 and preserves the
 established Bridge/firmware/accessory protocol contract. Use the matched current
 pair for testing and support. Historical Bridge versions remain under
 `bridge-application/Legacy`; historical firmware remains under
@@ -269,10 +298,11 @@ pair for testing and support. Historical Bridge versions remain under
 - **Firmware:** software flashed onto the Pico 2 W.
 - **Controller Mode:** firmware personality for controller and normal accessory
   operation.
-- **Standalone Mode:** Diagnostics or Network firmware personality.
+- **Standalone Mode:** Diagnostics, Network Pak, RandNET Keyboard, or N64 Mouse
+  personality; the standalone device owns the N64 controller port.
 - **Controller Pak:** N64 memory accessory represented by a 32 KiB `.mpk` file.
 - **Transfer Pak:** N64 accessory that exposes installed GB/GBC ROM/save content.
 - **Network Pak:** NICE64 network accessory and application protocol.
 - **RUDP:** the reliable ordered UDP carrier used by Network Pak Quick.
-- **LATEST_STATE:** disposable, sequence/session-protected UDP delivery for the
-  newest complete controller state.
+- **LATEST_STATE:** sequence/session-protected direct UDP delivery for complete
+  Controller/Keyboard state and cumulative Mouse movement/button state.

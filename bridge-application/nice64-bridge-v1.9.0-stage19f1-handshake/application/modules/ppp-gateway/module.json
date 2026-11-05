@@ -1,0 +1,14 @@
+{
+  "id": "ppp-gateway",
+  "displayName": "NICE64 PPP Gateway",
+  "version": "0.1.1-stage19f1",
+  "author": "NICE64",
+  "description": "Managed per-connection PPP peer with the CE direct-serial CLIENT/CLIENTSERVER preamble, framing, LCP, and IPCP over a live Network Pak stream.",
+  "resourcePrefix": "ppp://",
+  "defaultResource": "ppp://gateway",
+  "contentRoot": "content",
+  "assemblyPath": "Nice64.PppGateway.dll",
+  "moduleType": "PicoSwitchController.Nice64PppGatewayModule",
+  "moduleApiVersion": 1,
+  "protocolVersion": 1
+}

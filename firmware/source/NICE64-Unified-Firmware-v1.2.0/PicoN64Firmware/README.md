@@ -1,9 +1,19 @@
-# NICE64 Universal Firmware v1.2.0
+# NICE64 Universal Firmware v1.3.0 source
 
-This Pico 2 W source builds the unified Controller, Standalone Diagnostics, and
-Standalone Network personalities. The current configuration uses PIO Joybus RX,
+This is a source-version preparation only. The existing hardware-validated UF2
+remains the separately packaged v1.2.0 artifact until a v1.3.0 firmware build
+is explicitly authorized and validated.
+
+This Pico 2 W source builds the unified Controller, Standalone Diagnostics,
+Standalone Network, and Standalone Keyboard / Mouse personalities. Keyboard /
+Mouse selects either RandNET Keyboard or N64 Mouse. The current configuration uses PIO Joybus RX,
 selective SRAM placement for the deterministic Core0 hot path, flash/XIP for
 ordinary code, and Core1-owned USB/CYW43/lwIP services.
+
+Core1 accepts the typed direct-mobile Keyboard/Mouse packets and publishes them
+through the same source-neutral state boundary consumed by Core0 Joybus.
+Controller payload compatibility, Joybus timing, accessory behavior, and
+Network Pak remain unchanged.
 
 Set `PICO_SDK_PATH` and run `build-clean-pico2w.ps1` for a clean Release build.
 The RUDP candidate helper adds the configuration guard used by the packaged

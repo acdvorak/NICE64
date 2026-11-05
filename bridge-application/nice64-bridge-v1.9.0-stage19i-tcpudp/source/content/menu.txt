@@ -1,0 +1,8 @@
+Welcome|bridge://welcome|smile
+Headlines|bridge://rssr|news
+ITcorp Demo|bridge://itcorp|web
+About|bridge://about|info
+Diagnostics|bridge://diagnostics|diag
+News|bridge://news|news
+Projects|bridge://projects|folder
+Current Time|bridge://time|clock

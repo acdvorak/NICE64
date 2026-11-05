@@ -1,8 +1,9 @@
 # Known Issues and Deferred Work
 
-This document records current limitations of the NICE64 firmware v1.2.0 and
-PicoSwitchController Bridge v1.8.0 release. It does not override the supported
-workflows described in the [Bridge user guide](BRIDGE_USER_GUIDE.md).
+This document records current limitations of NICE64, including the Universal
+Firmware v1.3.0 release candidate and PicoSwitchController Bridge v1.9.0. It
+does not override the supported workflows described in the
+[Bridge user guide](BRIDGE_USER_GUIDE.md).
 
 ## RC review dispositions
 
@@ -43,6 +44,66 @@ sending resumes. Healthy `LATEST_STATE` transport semantics are unchanged.
 The RC static review has no remaining release blocker. BR-001 remains accepted
 module-specific hardening debt, and FW-001 remains an accepted RC risk requiring
 reproduction before any synchronization change.
+
+### BR-004 — Windows Bridge — Intermittent Keyboard/Mouse Neutral-State Timing Race
+
+**Component:** Windows Bridge v1.9.0
+
+**Affected test:** `KeyboardMouseWindowsInputSmoke`
+
+**Status:** Open — Investigation Pending
+
+**Severity:** Low / Undetermined Runtime Impact
+
+**Classification:** Intermittent test failure; suspected asynchronous
+synchronization race
+
+During Bridge v1.9.0 release-packaging validation,
+`KeyboardMouseWindowsInputSmoke` initially encountered an asynchronous
+neutral-state timing failure. Five consecutive no-build reruns then passed
+without modifying or rebuilding the application or test code. The issue was
+described during validation as pre-existing, but historical failure logs have
+not yet been independently verified. Available evidence suggests the test may
+occasionally inspect keyboard/mouse neutral-state behavior before asynchronous
+input processing has completed; the exact cause remains unconfirmed.
+
+Observed behavior:
+
+- the initial test execution encountered a neutral-state timing failure;
+- five consecutive no-build reruns passed;
+- no source or test modification was required for the reruns;
+- the other selected Bridge smoke tests passed; and
+- no corresponding physical N64 Keyboard/Mouse failure has been established.
+
+A possible synchronization race exists between an asynchronous input-state
+transition and the test's neutral-state assertion. Potential explanations
+include the assertion running before the expected transition completes,
+insufficient synchronization or timeout handling in the test harness, or an
+actual Bridge input-state transition timing issue. None is a confirmed root
+cause.
+
+The observation is confined to the Windows Bridge test suite. There is
+currently no evidence implicating Universal Firmware v1.3.0, Android Companion
+v1.2.0, Joybus timing, Pico Core0/Core1 processing, or firmware Keyboard/Mouse
+state handling. This is not classified as a firmware defect.
+
+Future investigation should:
+
+1. Locate the exact failing assertion and associated neutral-state transition.
+2. Examine the test's asynchronous waiting and timeout logic.
+3. Compare earlier Bridge source and test versions to determine whether the
+   failure predates v1.9.0.
+4. Attempt repeated reproduction with appropriate logging.
+5. Determine whether the issue exists only in the test harness or represents a
+   Bridge runtime race.
+6. If confirmed, propose the smallest correction in a separate, explicitly
+   authorized task.
+
+This issue may be closed only after the root cause is identified, any required
+correction is separately authorized and implemented, repeated automated tests
+demonstrate reliable behavior, existing Controller and Keyboard/Mouse behavior
+remains unchanged, and relevant regression tests pass. Five successful reruns
+alone do not resolve the issue.
 
 ## Network Pak application throughput
 

@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\PicoSwitchController.csproj" />
+    <None Include="..\..\..\..\firmware\NICE64-Unified-Firmware-v1.2.0-keyboard-mouse-dev\src\wireless_transport_contract.h"
+          Link="firmware-wireless-transport-contract.h"
+          CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\..\..\firmware\NICE64-Unified-Firmware-v1.2.0-keyboard-mouse-dev\src\nice64_latest_state.c"
+          Link="firmware-nice64-latest-state.c"
+          CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\..\..\firmware\NICE64-Unified-Firmware-v1.2.0-keyboard-mouse-dev\src\nice64_udp_service.c"
+          Link="firmware-nice64-udp-service.c"
+          CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

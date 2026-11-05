@@ -1,0 +1,10 @@
+{
+  "id": "ppp-gateway",
+  "displayName": "NICE64 PPP Gateway",
+  "version": "0.1.0",
+  "author": "NICE64",
+  "description": "Managed per-connection PPP peer providing framing, LCP, and IPCP over a live Network Pak stream.",
+  "resourcePrefix": "ppp://",
+  "defaultResource": "ppp://gateway",
+  "contentRoot": "content"
+}

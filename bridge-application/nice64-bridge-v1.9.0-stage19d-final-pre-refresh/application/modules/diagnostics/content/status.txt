@@ -1,0 +1,15 @@
+NICE64 NETWORK PAK DIAGNOSTICS
+
+Module:
+Diagnostics
+
+Bridge Version:
+0.9.0
+
+Chunk Size:
+16 bytes
+
+Protocol:
+unchanged
+
+Retrieved by NICE64 Bridge

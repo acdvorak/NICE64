@@ -36,7 +36,18 @@ object LatestStateV1Encoder {
         sessionId: SenderSessionId,
         sequence: ControllerSequence,
         state: N64ControllerState,
-    ): ByteArray = ByteArray(LatestStateV1Contract.PACKET_SIZE).also { packet ->
+    ): ByteArray {
+        val payload = ByteArray(LatestStateV1Contract.PAYLOAD_SIZE)
+        writeCanonicalN64State(payload, 0, state)
+        return encodePayload(sessionId, sequence, payload)
+    }
+
+    fun encodePayload(
+        sessionId: SenderSessionId,
+        sequence: ControllerSequence,
+        payload: ByteArray,
+    ): ByteArray = ByteArray(LatestStateV1Contract.HEADER_LENGTH + payload.size).also { packet ->
+        require(payload.size <= 0xffff) { "LATEST_STATE payload is too large." }
         writeUInt32BigEndian(packet, 0, LatestStateV1Contract.MAGIC)
         packet[4] = LatestStateV1Contract.VERSION.toByte()
         packet[5] = LatestStateV1Contract.DATA_FLAGS.toByte()
@@ -44,9 +55,9 @@ object LatestStateV1Encoder {
         packet[7] = LatestStateV1Contract.HEADER_LENGTH.toByte()
         writeUInt32BigEndian(packet, 8, sessionId.value)
         writeUInt32BigEndian(packet, 12, sequence.value)
-        packet[24] = 0
-        packet[25] = LatestStateV1Contract.PAYLOAD_SIZE.toByte()
-        writeCanonicalN64State(packet, LatestStateV1Contract.HEADER_LENGTH, state)
+        packet[24] = (payload.size shr 8).toByte()
+        packet[25] = payload.size.toByte()
+        payload.copyInto(packet, LatestStateV1Contract.HEADER_LENGTH)
     }
 
     private fun writeCanonicalN64State(

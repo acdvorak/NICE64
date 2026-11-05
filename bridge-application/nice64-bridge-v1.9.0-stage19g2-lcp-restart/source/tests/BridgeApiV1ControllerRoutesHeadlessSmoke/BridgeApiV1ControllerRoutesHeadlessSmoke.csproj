@@ -1,0 +1,58 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Microsoft.AspNetCore.TestHost" Version="9.0.15" />
+    <PackageReference Include="System.IO.Ports" Version="9.0.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="..\..\BridgeInstanceIdentity.cs" Link="BridgeInstanceIdentity.cs" />
+    <Compile Include="..\..\BridgeApiHost.cs" Link="BridgeApiHost.cs" />
+    <Compile Include="..\..\BridgeApiHostContracts.cs" Link="BridgeApiHostContracts.cs" />
+    <Compile Include="..\..\BridgeApiResolvedListener.cs" Link="BridgeApiResolvedListener.cs" />
+    <Compile Include="..\..\BridgeApiV1ControllerProjection.cs" Link="BridgeApiV1ControllerProjection.cs" />
+    <Compile Include="..\..\BridgeApiV1ControllerFacade.cs" Link="BridgeApiV1ControllerFacade.cs" />
+    <Compile Include="..\..\BridgeApiV1ControllerRoutes.cs" Link="BridgeApiV1ControllerRoutes.cs" />
+    <Compile Include="..\..\BridgeKeyboardMouseApi.cs" Link="BridgeKeyboardMouseApi.cs" />
+    <Compile Include="..\..\KeyboardMouseStateTransport.cs" Link="KeyboardMouseStateTransport.cs" />
+    <Compile Include="..\..\BridgeControllerEndpoint.cs" Link="BridgeControllerEndpoint.cs" />
+    <Compile Include="..\..\BridgeControllerPrimary.cs" Link="BridgeControllerPrimary.cs" />
+    <Compile Include="..\..\BridgeApiV1HistoryProjection.cs" Link="BridgeApiV1HistoryProjection.cs" />
+    <Compile Include="..\..\BridgeApiV1HistoryActivationRoutes.cs" Link="BridgeApiV1HistoryActivationRoutes.cs" />
+    <Compile Include="..\..\BridgeApiV1HistoryActivation.cs" Link="BridgeApiV1HistoryActivation.cs" />
+    <Compile Include="..\..\BridgeApiV1HistoryItemResolver.cs" Link="BridgeApiV1HistoryItemResolver.cs" />
+    <Compile Include="..\..\BridgeHistoryActivationService.cs" Link="BridgeHistoryActivationService.cs" />
+    <Compile Include="..\..\BridgeApiV1SessionProjection.cs" Link="BridgeApiV1SessionProjection.cs" />
+    <Compile Include="..\..\BridgeHistoryService.cs" Link="BridgeHistoryService.cs" />
+    <Compile Include="..\..\BridgeApiV1CommandRoutes.cs" Link="BridgeApiV1CommandRoutes.cs" />
+    <Compile Include="..\..\BridgeApiCommandFacade.cs" Link="BridgeApiCommandFacade.cs" />
+    <Compile Include="..\..\BridgeApiV1Projection.cs" Link="BridgeApiV1Projection.cs" />
+    <Compile Include="..\..\BridgeStateAggregator.cs" Link="BridgeStateAggregator.cs" />
+    <Compile Include="..\..\BridgeDeviceState.cs" Link="BridgeDeviceState.cs" />
+    <Compile Include="..\..\FirmwareModeControl.cs" Link="FirmwareModeControl.cs" />
+    <Compile Include="..\..\BridgeFirmwareService.cs" Link="BridgeFirmwareService.cs" />
+    <Compile Include="..\..\FirmwareModeTransitionService.cs" Link="FirmwareModeTransitionService.cs" />
+    <Compile Include="..\..\BridgeAccessoryService.cs" Link="BridgeAccessoryService.cs" />
+    <Compile Include="..\..\BridgeUiPolicy.cs" Link="BridgeUiPolicy.cs" />
+    <Compile Include="..\..\BridgeConnectionService.cs" Link="BridgeConnectionService.cs" />
+    <Compile Include="..\..\BridgeSession.cs" Link="BridgeSession.cs" />
+    <Compile Include="..\..\BridgeControllerService.cs" Link="BridgeControllerService.cs" />
+    <Compile Include="..\..\BridgeControllerPakContentService.cs" Link="BridgeControllerPakContentService.cs" />
+    <Compile Include="..\..\BridgeTransferPakContentService.cs" Link="BridgeTransferPakContentService.cs" />
+    <Compile Include="..\..\BridgeBulkTransfer.cs" Link="BridgeBulkTransfer.cs" />
+    <Compile Include="..\..\BridgeTransport.cs" Link="BridgeTransport.cs" />
+    <Compile Include="..\..\GameBoyRomMetadataParser.cs" Link="GameBoyRomMetadataParser.cs" />
+    <Compile Include="..\..\AccessoryPersistenceService.cs" Link="AccessoryPersistenceService.cs" />
+    <Compile Include="..\..\BridgeNetworkPakModuleService.cs" Link="BridgeNetworkPakModuleService.cs" />
+    <Compile Include="..\..\BridgeNetworkPakCarrierContracts.cs" Link="BridgeNetworkPakCarrierContracts.cs" />
+    <Compile Include="..\..\BridgeNetworkPakCarrierService.cs" Link="BridgeNetworkPakCarrierService.cs" />
+    <Compile Include="..\..\BridgeWifiProvisioningService.cs" Link="BridgeWifiProvisioningService.cs" />
+    <Compile Include="..\..\WifiProvisioning.cs" Link="WifiProvisioning.cs" />
+    <Compile Include="..\..\BridgeOperationState.cs" Link="BridgeOperationState.cs" />
+  </ItemGroup>
+</Project>

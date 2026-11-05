@@ -1,0 +1,4 @@
+#ifndef NICE64_TEST_PICO_COMPILER_H
+#define NICE64_TEST_PICO_COMPILER_H
+
+#endif

@@ -1,11 +1,11 @@
-# NICE64 Bridge v1.8.0 — Local API v1 Reference
+# NICE64 Bridge — Local API v1 Reference
 
 ## Document status
 
-> **Release status:** This API is part of NICE64 Bridge v1.8.0. Its explicit v1
-> routes and authoritative-state model are frozen for this release.
+> **Version status:** The packaged Bridge is v1.9.0. The API stays at v1; its
+> routes and authoritative-state model are unchanged by the versioned rebuild.
 
-This document describes the HTTP API implemented in NICE64 Bridge v1.8.0. It is derived from the current host, route, facade, projection, token-store, operation, aggregate-state, session, History, controller-Primary, and carrier contracts. It documents the API as it exists, not a proposed future server or multi-device architecture.
+This document describes the HTTP API implemented in NICE64 Bridge v1.9.0. It is derived from the current host, route, facade, projection, token-store, operation, aggregate-state, session, History, controller-Primary, and carrier contracts. It documents the API as it exists, not a proposed future server or multi-device architecture.
 
 The Bridge remains a one-Pico-per-instance Windows desktop application. The API is optional and disabled by default. It supports HTTP on IPv4 loopback and, when explicitly configured, authenticated HTTPS on exactly one selected LAN IPv4. Both listeners use the same semantic services and operation coordinator as the desktop UI.
 
@@ -140,11 +140,15 @@ All documented command values are exact protocol strings. Values are trimmed, bu
 | `GET` | `/api/v1/sessions/{sessionId}` | Read one current Bridge session |
 | `GET` | `/api/v1/sessions/{sessionId}/controller/primary` | Read controller Primary and endpoint state |
 | `PUT` | `/api/v1/sessions/{sessionId}/controller/primary` | Select Bridge Primary or NICE Mobile Primary |
+| `GET` | `/api/v1/sessions/{sessionId}/mobile-input/endpoint` | Resolve the verified direct mobile-input UDP endpoint |
 | `POST` | `/api/v1/sessions/{sessionId}/history/{itemId}/activate` | Activate one authoritative History item |
 | `POST` | `/api/v1/firmware` | Select firmware personality |
 | `POST` | `/api/v1/accessory` | Select N64 accessory semantics |
 | `POST` | `/api/v1/network-pak/module` | Select a registered Network Pak module |
 | `POST` | `/api/v1/network-pak/carrier` | Select public TCP or Reliable UDP Quick carrier intent |
+| `PUT` | `/api/v1/keyboard-mouse/keyboard-state` | Publish complete source-neutral held-key state through the Bridge |
+| `POST` | `/api/v1/keyboard-mouse/pointer-delta` | Publish source-neutral relative pointer movement and buttons through the Bridge |
+| `GET` | `/api/v1/keyboard-mouse/keyboard-leds` | Read the last keyboard LED request observed from the N64 |
 
 The public mutation surface is intentionally narrow. Section 12 lists operations that are not exposed.
 
@@ -237,6 +241,8 @@ Supported values:
 | `controller` | Controller firmware personality |
 | `diagnostics` | Diagnostics firmware personality |
 | `network` | Network Pak firmware personality |
+| `keyboard` | Standalone RandNET Keyboard personality |
+| `mouse` | Standalone N64 Mouse personality |
 
 Operation kind:
 
@@ -270,6 +276,13 @@ device.accessoryTransition
 ```
 
 A failed firmware operation may still have changed the connected control session or the device's observed personality. Do not assume the requested personality, prior UI state, or operation success flag is the final truth.
+
+Keyboard and Mouse use this same firmware service and asynchronous
+reboot/reconnect contract as the desktop UI. A `202` response admits the
+request only. Before sending input, clients must observe terminal operation
+completion and verify the matching `firmwarePersonality`, `deviceRole`,
+`deviceService`, transition target/phase, connection state, and absence of a
+transition failure in `/api/v1/state`.
 
 ### 7.2 Select accessory
 
@@ -538,6 +551,76 @@ Security-sensitive data is intentionally reduced:
 
 `captureSequence` orders aggregate captures. It is not an entity revision, ETag, optimistic-concurrency token, or durable event sequence.
 
+### 8.4 Mobile input endpoint
+
+```http
+GET /api/v1/sessions/{sessionId}/mobile-input/endpoint
+```
+
+For the current connected session, this returns the Bridge-verified Pico UDP
+endpoint used by the Android direct human-input data plane. The projection
+contains availability, a bounded unavailability reason when applicable,
+address, port, transport, protocol, and controller-type compatibility fields.
+It does not transfer controller Primary and does not select firmware mode.
+
+The official Android companion uses this endpoint for latency-sensitive
+Controller, Keyboard, and Mouse packets only after its management prerequisites
+and verified personality are satisfied. Network Pak remains Bridge-mediated.
+
+### 8.5 Keyboard and pointer state
+
+The Bridge-mediated source-neutral routes remain available for tests,
+automation, and third-party clients:
+
+```http
+PUT /api/v1/keyboard-mouse/keyboard-state
+```
+
+```json
+{ "heldKeys": [13, 7] }
+```
+
+`heldKeys` is a complete replaceable set of NICE64 logical-key identifiers. It
+is not text, Unicode, or a character stream. An empty array publishes the
+neutral released state.
+
+```http
+POST /api/v1/keyboard-mouse/pointer-delta
+```
+
+```json
+{ "left": true, "right": false, "dx": 10, "dy": -5 }
+```
+
+Buttons are persistent state and `dx`/`dy` are signed relative movement added
+to the established cumulative pointer transport. The firmware owns N64-sized
+clipping, remainder retention, and consume-on-poll behavior.
+
+Successful writes return:
+
+```json
+{ "accepted": true, "disposition": "accepted", "sessionId": 1 }
+```
+
+Invalid logical state returns `400`; an unavailable line transport returns
+`503`. These routes do not replace the official Android companion's direct UDP
+gameplay path.
+
+### 8.6 Keyboard LEDs
+
+```http
+GET /api/v1/keyboard-mouse/keyboard-leds
+```
+
+Representative response:
+
+```json
+{ "raw": 7, "power": true, "capsLock": true, "numLock": true }
+```
+
+LED state follows the management/service path from N64 to Pico to Bridge to
+client. It is intentionally not part of the direct Android input data plane.
+
 ## 9. PowerShell usage examples
 
 The following examples assume an authorized provisioning path has supplied the plaintext token:
@@ -654,6 +737,7 @@ curl -X POST \
 | `409` | Another global operation is running | `operation-busy` |
 | `415` | Mutation did not use an accepted JSON media type | `unsupported-media-type` |
 | `500` | Request processing encountered an unexpected internal failure | `internal-error` |
+| `503` | Keyboard/Mouse line transport is unavailable | `transport-unavailable` |
 
 An HTTP `202` can later lead to operation status `failed` or `cancelled`. Conversely, a failed operation can leave some authoritative state changed. HTTP status describes admission and request handling; the operation projection describes execution; the state projection describes final semantic truth.
 
@@ -666,7 +750,9 @@ The following are not public `/api/v1` mutation routes:
 - Connect or disconnect.
 - USB Network Pak carrier selection.
 - Wi-Fi scanning, provisioning, credential management, or connection commands.
-- Controller input injection or streaming.
+- Controller input injection or streaming. The explicitly documented
+  Keyboard/Mouse source-neutral state routes are the only Bridge input-state
+  exception.
 - Controller Pak creation, load, save, upload, or download.
 - Transfer Pak ROM/save installation, upload, or download.
 - Firmware image upload.
@@ -759,12 +845,14 @@ The API does not imply that earlier TCP performance concerns are globally solved
 
 The principal implementation files are located under:
 
-`bridge-application/nice64-bridge-v1.8.0/source/` in the repository.
+`bridge-application/nice64-bridge-v1.9.0/source/` in the repository.
 
 | Concern | Source file |
 |---|---|
 | HTTP host, authentication middleware, and limits | `BridgeApiHost.cs` |
 | Explicit v1 routes and request validation | `BridgeApiV1CommandRoutes.cs` |
+| Keyboard/Mouse state and LED routes | `BridgeKeyboardMouseApi.cs` |
+| Session-scoped direct mobile-input endpoint | `BridgeApiV1ControllerRoutes.cs` |
 | Operation admission and semantic service dispatch | `BridgeApiCommandFacade.cs` |
 | API-safe state and operation projection | `BridgeApiV1Projection.cs` |
 | DPAPI token storage | `BridgeApiProtectedTokenStore.cs` |
@@ -791,7 +879,7 @@ After receiving `202`:
 
 ---
 
-**Release context:** Bridge v1.8.0 packages the accepted service/API boundary,
+**Release context:** Bridge v1.9.0 packages the accepted service/API boundary,
 explicit controller Primary, History/session routes, LocalNetwork HTTPS, and
 Android companion integration. Controller gameplay remains direct Android-to-
 Pico UDP `LATEST_STATE`; it is not an HTTP streaming route.

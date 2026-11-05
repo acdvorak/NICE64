@@ -1,15 +1,19 @@
 # NICE64 Android Client
 
-This is the D8A Android project foundation. It contains exactly two modules:
+Source and packaged debug APK version: `1.2.0` (`versionCode` 2).
 
-- `core`: pure Kotlin/JVM immutable domain models and the frozen
-  `latest-state-v1` byte encoder.
-- `app`: a minimal single-activity Jetpack Compose development shell using
-  ViewModel, StateFlow, and unidirectional state rendering.
+This accepted Android companion project contains two modules:
 
-D8A intentionally contains no HTTP client, TLS implementation, pairing parser,
-credential persistence, QR scanner, UDP socket, report scheduler, Android input
-handling, or gameplay controller UI.
+- `core`: pure Kotlin/JVM domain models and the compatible `latest-state-v1`
+  plus typed mobile-input encoders.
+- `app`: the single-activity Jetpack Compose client, including authenticated
+  Bridge management, Controller input, RandNET Keyboard, N64 Mouse, physical
+  Android input, and on-screen controls.
+
+Bridge management uses authenticated pinned HTTPS. Latency-sensitive
+Controller, Keyboard, and Mouse state uses direct Wi-Fi UDP to Pico. Mouse
+preferences use Preferences DataStore; Android pointer Y is normalized before
+optional Invert X/Invert Y and cumulative movement accounting.
 
 ## Toolchain
 

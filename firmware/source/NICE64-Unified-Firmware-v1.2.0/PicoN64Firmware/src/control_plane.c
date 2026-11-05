@@ -28,10 +28,11 @@
 #define NICE64_CONTROL_PLANE_VERSION 1
 #define NICE64_FIRMWARE_ID "TIMING_CORE_V2"
 #define NICE64_BOOTREQ_REBOOT_DELAY_MS 100u
+#define NICE64_BOOT_FLAG_KEYBOARD_MOUSE_MOUSE 0x01u
 
 static const char *control_plane_current_capability(void) {
 #if NICE64_UNIVERSAL_CONTROLLER_DIAGNOSTICS_NETWORK
-    return "CONTROLLER|STANDALONE/DIAGNOSTICS|STANDALONE/NETWORK";
+    return "CONTROLLER|STANDALONE/DIAGNOSTICS|STANDALONE/NETWORK|STANDALONE/KEYBOARD_MOUSE/KEYBOARD|STANDALONE/KEYBOARD_MOUSE/MOUSE";
 #elif NICE64_UNIVERSAL_CONTROLLER_DIAGNOSTICS
     return "CONTROLLER|STANDALONE/DIAGNOSTICS";
 #else
@@ -65,13 +66,14 @@ static void control_plane_print_bootreq(const nice64_response_sink_t *response) 
 
 static void control_plane_write_bootreq(nice64_role_t role,
                                         nice64_standalone_service_t service,
+                                        uint8_t flags,
                                         const nice64_response_sink_t *response) {
     const nice64_active_mode_t mode = {
         .role = role,
         .standalone_service = service,
     };
 
-    if (boot_selector_write(mode, 0u)) {
+    if (boot_selector_write(mode, flags)) {
         nice64_response_puts(response, "OK BOOTREQ TEST");
     } else {
         nice64_response_puts(response, "ERR BOOTREQ MODE");
@@ -87,7 +89,8 @@ static bool control_plane_universal_mode_supported(nice64_active_mode_t mode) {
 #if NICE64_UNIVERSAL_CONTROLLER_DIAGNOSTICS_NETWORK
     return mode.role == NICE64_ROLE_STANDALONE &&
            (mode.standalone_service == NICE64_SERVICE_DIAGNOSTICS ||
-            mode.standalone_service == NICE64_SERVICE_NETWORK);
+            mode.standalone_service == NICE64_SERVICE_NETWORK ||
+            mode.standalone_service == NICE64_SERVICE_KEYBOARD_MOUSE);
 #else
     return mode.role == NICE64_ROLE_STANDALONE &&
            mode.standalone_service == NICE64_SERVICE_DIAGNOSTICS;
@@ -95,6 +98,7 @@ static bool control_plane_universal_mode_supported(nice64_active_mode_t mode) {
 }
 
 static void control_plane_request_mode(nice64_active_mode_t requested,
+                                       uint8_t flags,
                                        const nice64_response_sink_t *response) {
     if (!control_plane_universal_mode_supported(requested)) {
         nice64_response_puts(response, "REQUEST_MODE|ERR|UNSUPPORTED");
@@ -102,22 +106,47 @@ static void control_plane_request_mode(nice64_active_mode_t requested,
     }
 
     const nice64_active_mode_t current = role_manager_active_mode();
+    const bool same_keyboard_mouse_device =
+        requested.standalone_service != NICE64_SERVICE_KEYBOARD_MOUSE ||
+        role_manager_keyboard_mouse_device() ==
+            (((flags & NICE64_BOOT_FLAG_KEYBOARD_MOUSE_MOUSE) != 0u)
+                ? NICE64_KEYBOARD_MOUSE_MOUSE
+                : NICE64_KEYBOARD_MOUSE_KEYBOARD);
     if (current.role == requested.role &&
-        current.standalone_service == requested.standalone_service) {
-        nice64_response_printf(response, "REQUEST_MODE|ALREADY_ACTIVE|%s|%s\n",
-               role_manager_role_name(current.role),
-               role_manager_standalone_service_name(current.standalone_service));
+        current.standalone_service == requested.standalone_service &&
+        same_keyboard_mouse_device) {
+        if (current.standalone_service == NICE64_SERVICE_KEYBOARD_MOUSE) {
+            nice64_response_printf(response,
+                   "REQUEST_MODE|ALREADY_ACTIVE|%s|%s|%s\n",
+                   role_manager_role_name(current.role),
+                   role_manager_standalone_service_name(current.standalone_service),
+                   role_manager_keyboard_mouse_device_name(
+                       role_manager_keyboard_mouse_device()));
+        } else {
+            nice64_response_printf(response,
+                   "REQUEST_MODE|ALREADY_ACTIVE|%s|%s\n",
+                   role_manager_role_name(current.role),
+                   role_manager_standalone_service_name(current.standalone_service));
+        }
         return;
     }
 
-    if (!boot_selector_write(requested, 0u)) {
+    if (!boot_selector_write(requested, flags)) {
         nice64_response_puts(response, "REQUEST_MODE|ERR|WRITE_FAILED");
         return;
     }
 
-    nice64_response_printf(response, "REQUEST_MODE|ACK|%s|%s\n",
-           role_manager_role_name(requested.role),
-           role_manager_standalone_service_name(requested.standalone_service));
+    if (requested.standalone_service == NICE64_SERVICE_KEYBOARD_MOUSE) {
+        nice64_response_printf(response, "REQUEST_MODE|ACK|%s|%s|%s\n",
+               role_manager_role_name(requested.role),
+               role_manager_standalone_service_name(requested.standalone_service),
+               (flags & NICE64_BOOT_FLAG_KEYBOARD_MOUSE_MOUSE) != 0u
+                   ? "MOUSE" : "KEYBOARD");
+    } else {
+        nice64_response_printf(response, "REQUEST_MODE|ACK|%s|%s\n",
+               role_manager_role_name(requested.role),
+               role_manager_standalone_service_name(requested.standalone_service));
+    }
     nice64_response_flush(response);
     boot_selector_reboot(NICE64_BOOTREQ_REBOOT_DELAY_MS);
 }
@@ -147,6 +176,15 @@ bool control_plane_try_handle_line(const char *line,
 
     if (strcmp(line, "MODE?") == 0) {
         const nice64_active_mode_t mode = role_manager_active_mode();
+        if (mode.role == NICE64_ROLE_STANDALONE &&
+            mode.standalone_service == NICE64_SERVICE_KEYBOARD_MOUSE) {
+            nice64_response_printf(response, "MODE|%s|%s|%s\n",
+                   role_manager_role_name(mode.role),
+                   role_manager_standalone_service_name(mode.standalone_service),
+                   role_manager_keyboard_mouse_device_name(
+                       role_manager_keyboard_mouse_device()));
+            return true;
+        }
         nice64_response_printf(response, "MODE|%s|%s\n",
                role_manager_role_name(mode.role),
                role_manager_standalone_service_name(mode.standalone_service));
@@ -164,17 +202,31 @@ bool control_plane_try_handle_line(const char *line,
     }
 
     if (strcmp(line, "BOOTREQ TEST CONTROLLER") == 0) {
-        control_plane_write_bootreq(NICE64_ROLE_CONTROLLER, NICE64_SERVICE_NONE, response);
+        control_plane_write_bootreq(NICE64_ROLE_CONTROLLER, NICE64_SERVICE_NONE, 0u, response);
         return true;
     }
 
     if (strcmp(line, "BOOTREQ TEST DIAGNOSTICS") == 0) {
-        control_plane_write_bootreq(NICE64_ROLE_STANDALONE, NICE64_SERVICE_DIAGNOSTICS, response);
+        control_plane_write_bootreq(NICE64_ROLE_STANDALONE, NICE64_SERVICE_DIAGNOSTICS, 0u, response);
         return true;
     }
 
     if (strcmp(line, "BOOTREQ TEST NETWORK") == 0) {
-        control_plane_write_bootreq(NICE64_ROLE_STANDALONE, NICE64_SERVICE_NETWORK, response);
+        control_plane_write_bootreq(NICE64_ROLE_STANDALONE, NICE64_SERVICE_NETWORK, 0u, response);
+        return true;
+    }
+
+    if (strcmp(line, "BOOTREQ TEST KEYBOARD") == 0) {
+        control_plane_write_bootreq(NICE64_ROLE_STANDALONE,
+                                    NICE64_SERVICE_KEYBOARD_MOUSE, 0u, response);
+        return true;
+    }
+
+    if (strcmp(line, "BOOTREQ TEST MOUSE") == 0) {
+        control_plane_write_bootreq(NICE64_ROLE_STANDALONE,
+                                    NICE64_SERVICE_KEYBOARD_MOUSE,
+                                    NICE64_BOOT_FLAG_KEYBOARD_MOUSE_MOUSE,
+                                    response);
         return true;
     }
 
@@ -221,7 +273,7 @@ bool control_plane_try_handle_line(const char *line,
             .role = NICE64_ROLE_CONTROLLER,
             .standalone_service = NICE64_SERVICE_NONE,
         };
-        control_plane_request_mode(requested, response);
+        control_plane_request_mode(requested, 0u, response);
         return true;
     }
 
@@ -230,7 +282,7 @@ bool control_plane_try_handle_line(const char *line,
             .role = NICE64_ROLE_STANDALONE,
             .standalone_service = NICE64_SERVICE_DIAGNOSTICS,
         };
-        control_plane_request_mode(requested, response);
+        control_plane_request_mode(requested, 0u, response);
         return true;
     }
 
@@ -240,7 +292,27 @@ bool control_plane_try_handle_line(const char *line,
             .role = NICE64_ROLE_STANDALONE,
             .standalone_service = NICE64_SERVICE_NETWORK,
         };
-        control_plane_request_mode(requested, response);
+        control_plane_request_mode(requested, 0u, response);
+        return true;
+    }
+
+    if (strcmp(line, "REQUEST_MODE KEYBOARD") == 0) {
+        const nice64_active_mode_t requested = {
+            .role = NICE64_ROLE_STANDALONE,
+            .standalone_service = NICE64_SERVICE_KEYBOARD_MOUSE,
+        };
+        control_plane_request_mode(requested, 0u, response);
+        return true;
+    }
+
+    if (strcmp(line, "REQUEST_MODE MOUSE") == 0) {
+        const nice64_active_mode_t requested = {
+            .role = NICE64_ROLE_STANDALONE,
+            .standalone_service = NICE64_SERVICE_KEYBOARD_MOUSE,
+        };
+        control_plane_request_mode(requested,
+                                   NICE64_BOOT_FLAG_KEYBOARD_MOUSE_MOUSE,
+                                   response);
         return true;
     }
 #endif

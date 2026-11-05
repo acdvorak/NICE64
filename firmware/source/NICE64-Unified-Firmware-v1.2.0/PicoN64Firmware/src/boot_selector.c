@@ -42,7 +42,8 @@ static bool boot_selector_target_is_supported(nice64_active_mode_t mode) {
 
     if (mode.role == NICE64_ROLE_STANDALONE) {
         return mode.standalone_service == NICE64_SERVICE_DIAGNOSTICS ||
-               mode.standalone_service == NICE64_SERVICE_NETWORK;
+               mode.standalone_service == NICE64_SERVICE_NETWORK ||
+               mode.standalone_service == NICE64_SERVICE_KEYBOARD_MOUSE;
     }
 
     return false;

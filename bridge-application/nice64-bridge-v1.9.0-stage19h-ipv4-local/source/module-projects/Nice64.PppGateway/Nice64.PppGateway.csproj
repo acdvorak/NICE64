@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>Nice64.PppGateway</AssemblyName>
+    <RootNamespace>PicoSwitchController</RootNamespace>
+    <Version>1.0.3-stage19h</Version>
+    <AssemblyVersion>1.0.3.0</AssemblyVersion>
+    <FileVersion>1.0.3.0</FileVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\PicoSwitchController.csproj" />
+    <InternalsVisibleTo Include="LiveBridgePppHeadlessSmoke" />
+    <InternalsVisibleTo Include="DirectConnectionHandshakeHeadlessSmoke" />
+    <InternalsVisibleTo Include="LcpRestartSchedulerHeadlessSmoke" />
+    <InternalsVisibleTo Include="LocalIpv4EndpointHeadlessSmoke" />
+  </ItemGroup>
+</Project>

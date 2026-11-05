@@ -1,0 +1,11 @@
+{
+  "id": "browser-test",
+  "displayName": "Browser Test",
+  "version": "0.9.0",
+  "author": "NICE64",
+  "description": "Fixed NICE document test module for Browser ROM transport validation.",
+  "resourcePrefix": "browser://test",
+  "defaultResource": "browser://test",
+  "contentRoot": "content",
+  "protocolVersion": 1
+}

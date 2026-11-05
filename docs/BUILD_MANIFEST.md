@@ -1,14 +1,15 @@
 # NICE64 Build Manifest
 
-This manifest records the finalized release artifacts packaged in the public NICE64 repository.
+This manifest records the locally packaged NICE64 release-candidate artifacts.
+No Git publication has been performed.
 
 ## Current release
 
-- NICE64 unified firmware: **v1.2.0**
-- PicoSwitchController Bridge: **v1.8.0**
+- NICE64 unified firmware: **v1.3.0 release candidate — hardware validated**
+- PicoSwitchController Bridge: **v1.9.0**
 - NICE Browser: **v1.4.1**
-- Android companion: **accepted frozen build (`0.1.0-dev` project identity)**
-- Release status: **Final release export / accepted**
+- Android companion: **v1.2.0 (`versionCode` 2), debug-signed**
+- Release status: **Local release candidates prepared; firmware physical validation passed**
 - Checkpoint F: **COMPLETE / ACCEPTED / FROZEN**
 - Phase G: **COMPLETE / ACCEPTED / FROZEN**
 
@@ -16,52 +17,65 @@ This manifest records the finalized release artifacts packaged in the public NIC
 
 Path:
 
-`firmware/unified-firmware-v1.2.0/NICE64-Universal-Firmware-v1.2.0.uf2`
+`firmware/unified-firmware-v1.3.0/NICE64-Universal-Firmware-v1.3.0.uf2`
 
 SHA-256:
 
-`81A7266CF008ECC3EC665FC4D916EFBAF4BF8DE742930508E8905DE057FF7732`
+`B7807310DA88D16F251A5349F9D67E04A082A1CCE651527ACD17484062CDC785`
 
 Build target and configuration:
 
 - Raspberry Pi Pico 2 W / RP2350
 - Pico SDK CMake build
-- `NICE64_ENABLE_RUDP_C=1`
-- firmware version string verified in the built ELF as `1.2.0`
+- `NICE64_RUDPC_HARDWARE_CANDIDATE=1`
+- `NICE64_UNIVERSAL_CONTROLLER_DIAGNOSTICS_NETWORK=1`
+- `NICE_RX_BACKEND_PIO=1`
+- typed direct mobile Controller/Keyboard/Mouse input on Core 1
+- firmware version string verified in the built ELF as `1.3.0`
 - firmware/Transfer Pak partition boundary guard passed
-- firmware image end: 378,872 bytes
+- firmware image end: 387,184 bytes
 - protected boundary: 1,048,576 bytes (`0x100000`)
 
-The prior v1.1.0 binary and source release are retained under `firmware/Legacy/`.
+The v1.3.0 source matches the accepted G2 implementation across functional
+files; only approved version declarations and documentation differ. The
+compiled UF2 has passed extensive real-hardware use, including RandNET Keyboard
+with a Windows CE port/side project and N64 Mouse with Mario Studio on 64DD. The
+preserved v1.2.0 G2 UF2 remains the prior hardware-validated reference with
+SHA-256
+`95C6F83D84FDC32C4E1ADCA638A37B1BB06F56E897B43658DF09D5153FEE2359`.
+The prior v1.1.0 binary and source release remain under `firmware/Legacy/`.
 
 ## Bridge artifacts
 
 Application directory:
 
-`bridge-application/nice64-bridge-v1.8.0/application/`
+`bridge-application/nice64-bridge-v1.9.0/application/`
 
 Executable:
 
-`bridge-application/nice64-bridge-v1.8.0/application/PicoSwitchController.exe`
+`bridge-application/nice64-bridge-v1.9.0/application/PicoSwitchController.exe`
 
 SHA-256:
 
-`7B1A328662B759D95BBA9BC243925B828FBC5817E8B6E283DBF5BAE7C0C0945D`
+`3CE9AF09E8D8BAF58858FCDDE1378FACC1706C06BDBA8718AA9E346577CD0AA4`
 
 Primary assembly:
 
-`bridge-application/nice64-bridge-v1.8.0/application/PicoSwitchController.dll`
+`bridge-application/nice64-bridge-v1.9.0/application/PicoSwitchController.dll`
 
 SHA-256:
 
-`0ECA098485ED42ABA22F435D0780498E9759FB544B1B359F7092C7EF8482117D`
+`3EE9F33F70AA5B0EAF952E3575AED375A7C711E123DCE0E0006FEAAC7BF85065`
 
 Build configuration:
 
 - .NET 9 Windows Desktop
 - Release configuration
-- application and assembly version: v1.8.0
-- deterministic non-hardware regression baseline: 60/60 PASS
+- application/product version: v1.9.0; assembly/file version: v1.9.0.0
+- 10 selected Stage F/G smoke suites passed on the first run
+- `KeyboardMouseWindowsInputSmoke` initially encountered its pre-existing
+  asynchronous initial-neutral timing race, then passed five consecutive
+  no-build reruns; no product or test source was changed
 - Release build baseline: 0 warnings / 0 errors
 
 The historical Bridge releases under `bridge-application/Legacy/` remain preserved and unchanged. The prior nonlegacy v1.6.0 package is not part of the current public release surface.
@@ -74,15 +88,34 @@ Path:
 
 SHA-256:
 
-`28D9E16DBD94E4FC07B32033DE84C621DE50E2A60C7F8D0D2BD87A5E0BF897CC`
+`E40C976B9D5A5BDE26B77F834B4F0EE59719D9007DB58AD3A531E4BEF680260A`
 
 Build identity and validation:
 
-- project version identity: `0.1.0-dev` (no new semantic Android version was invented);
+- version name `1.2.0`; version code `2`;
 - minimum API 26; target API 36;
-- JVM 327/327 PASS;
-- connected instrumentation 81/81 PASS;
-- lint, build, and physical freeze PASS.
+- JVM 338/338 PASS (294 app + 44 core);
+- lint and debug APK build PASS;
+- APK Signature Scheme v2 verification PASS with one Android Debug signer;
+- prior connected instrumentation baseline: 81/81 PASS;
+- G2 direct Mouse/Mario Artist hardware validation and Controller/Transfer Pak
+  regressions PASS. The post-G2 orientation artifact is identified separately
+  by its accepted hash; no additional physical result is inferred from its
+  automated build alone.
+
+## Keyboard/Mouse diagnostic ROM
+
+Path:
+
+`rom/keyboard-mouse-test/nice64-keyboard-mouse-test.z64`
+
+SHA-256:
+
+`86B747D967377FAA72AA9C6798999E06FF4FF32D24AE4EBD48C2B646E841D4ED`
+
+The included source and ROM implement the real-N64 RandNET Keyboard and N64
+Mouse diagnostic used for identity, command, rollover, LED, button, relative
+movement, and consume-once validation.
 
 ## Browser artifact
 
@@ -106,7 +139,7 @@ The historical v1.4.0 Browser package remains preserved under `rom/Legacy/`.
 
 ## Release hygiene
 
-The promoted packages exclude:
+The newly packaged applications exclude:
 
 - build-intermediate `bin/` and `obj/` trees from packaged source;
 - PDB and temporary files;
@@ -118,7 +151,20 @@ The promoted packages exclude:
 The Bridge release assembly was produced with deterministic, path-mapped build
 metadata so its public CodeView reference uses a neutral virtual source root.
 
-Firmware, Joybus, Network Pak protocol, and physical RUDP tuning are unchanged except for the separately documented firmware v1.2.0 safety and retry-idempotency corrections. NICE Browser v1.4.1 is a release-identity-only promotion of its confirmed working source lineage. Frozen RUDP parameters remain UDP port 6465, window 8, physical flight cap 2, payload 512 bytes, RTO 40 ms, and retries 4.
+The v1.3.0 release candidate retains the accepted G2 typed direct
+Keyboard/Mouse input on Core 1 while
+preserving Joybus timing, Controller/accessory behavior, Network Pak protocol,
+and physical RUDP tuning. The post-G2 mouse-orientation correction is confined
+to Android and Windows clients. NICE Browser v1.4.1 is a release-identity-only
+promotion of its confirmed working source lineage. Frozen RUDP parameters
+remain UDP port 6465, window 8, physical flight cap 2, payload 512 bytes, RTO
+40 ms, and retries 4.
+
+Firmware personality requests are volatile one-shot watchdog-reboot selections,
+not flash-persisted preferences. The selector is consumed and cleared during
+initialization, and a cold boot after power removal safely defaults to
+Controller personality. This behavior is present throughout the retained
+unified-firmware lineage beginning with v1.1.0.
 
 ## Documentation
 

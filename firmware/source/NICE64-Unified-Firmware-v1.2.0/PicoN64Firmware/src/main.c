@@ -7,14 +7,19 @@
 #include "controller_state.h"
 #include "core_transport.h"
 #include "joybus.h"
+#include "keyboard_mouse_service.h"
+#include "keyboard_state.h"
 #include "n64_accessory.h"
 #include "n64_controller.h"
+#include "n64_keyboard.h"
+#include "n64_mouse.h"
 #include "network_pak.h"
 #include "nice64_tcp_service.h"
 #include "nice64_udp_service.h"
 #include "pico/multicore.h"
 #include "pico/stdlib.h"
 #include "pico/time.h"
+#include "pointer_state.h"
 #include "role_manager.h"
 #include "standalone_diagnostics.h"
 #include "wifi_service.h"
@@ -72,6 +77,12 @@ static void __attribute__((noreturn)) core1_entry(void) {
                    mode.standalone_service == NICE64_SERVICE_NETWORK) {
             network_pak_core1_service();
             tcp_handler = network_pak_handle_bridge_line;
+        } else if (mode.role == NICE64_ROLE_STANDALONE &&
+                   mode.standalone_service == NICE64_SERVICE_KEYBOARD_MOUSE) {
+            keyboard_state_service();
+            pointer_state_service();
+            bridge_service_poll_with_handler(keyboard_mouse_service_handle_line);
+            tcp_handler = keyboard_mouse_service_handle_line;
         } else {
             bridge_service_poll();
             controller_state_service();
@@ -234,15 +245,18 @@ static bool universal_mode_supported(nice64_active_mode_t mode) {
 #if NICE64_UNIVERSAL_CONTROLLER_DIAGNOSTICS_NETWORK
     return mode.role == NICE64_ROLE_STANDALONE &&
            (mode.standalone_service == NICE64_SERVICE_DIAGNOSTICS ||
-            mode.standalone_service == NICE64_SERVICE_NETWORK);
+            mode.standalone_service == NICE64_SERVICE_NETWORK ||
+            mode.standalone_service == NICE64_SERVICE_KEYBOARD_MOUSE);
 #else
     return mode.role == NICE64_ROLE_STANDALONE &&
            mode.standalone_service == NICE64_SERVICE_DIAGNOSTICS;
 #endif
 }
 
-static nice64_active_mode_t universal_boot_mode(bool *consume_selector_after_init) {
+static nice64_active_mode_t universal_boot_mode(bool *consume_selector_after_init,
+                                                 uint8_t *selector_flags) {
     *consume_selector_after_init = false;
+    *selector_flags = 0u;
 
     const boot_selector_record_t record = boot_selector_read();
     if (record.status != BOOT_SELECTOR_STATUS_VALID) {
@@ -262,6 +276,7 @@ static nice64_active_mode_t universal_boot_mode(bool *consume_selector_after_ini
     }
 
     *consume_selector_after_init = true;
+    *selector_flags = record.flags;
     return record.mode;
 }
 #endif
@@ -277,10 +292,18 @@ int main(void) {
     role_manager_init();
 #if NICE64_UNIVERSAL_ANY
     bool consume_selector_after_init = false;
+    uint8_t selector_flags = 0u;
     const nice64_active_mode_t active_mode =
-        universal_boot_mode(&consume_selector_after_init);
+        universal_boot_mode(&consume_selector_after_init, &selector_flags);
     if (!role_manager_set_active_mode(active_mode)) {
         role_manager_set_active_mode(controller_mode());
+    }
+    if (active_mode.role == NICE64_ROLE_STANDALONE &&
+        active_mode.standalone_service == NICE64_SERVICE_KEYBOARD_MOUSE) {
+        role_manager_set_keyboard_mouse_device(
+            (selector_flags & 0x01u) != 0u
+                ? NICE64_KEYBOARD_MOUSE_MOUSE
+                : NICE64_KEYBOARD_MOUSE_KEYBOARD);
     }
 #endif
     if (!role_manager_is_controller() && !role_manager_is_standalone()) {
@@ -299,6 +322,10 @@ int main(void) {
         if (mode.standalone_service == NICE64_SERVICE_NETWORK) {
             network_pak_init();
             joybus_init();
+        } else if (mode.standalone_service == NICE64_SERVICE_KEYBOARD_MOUSE) {
+            n64_keyboard_init();
+            n64_mouse_init();
+            joybus_init();
         } else {
             standalone_diagnostics_init();
         }
@@ -310,6 +337,10 @@ int main(void) {
         sleep_ms(500);
         if (mode.standalone_service == NICE64_SERVICE_NETWORK) {
             puts("Pico N64 standalone Network Pak starting");
+        } else if (mode.standalone_service == NICE64_SERVICE_KEYBOARD_MOUSE) {
+            printf("Pico N64 standalone Keyboard/Mouse starting: %s\n",
+                   role_manager_keyboard_mouse_device_name(
+                       role_manager_keyboard_mouse_device()));
         } else {
             standalone_diagnostics_write_banner();
         }

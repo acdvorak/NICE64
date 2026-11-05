@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\..\BridgeApiAccessMode.cs" Link="BridgeApiAccessMode.cs" />
+    <Compile Include="..\..\BridgeApiLanAddressValidator.cs" Link="BridgeApiLanAddressValidator.cs" />
+    <Compile Include="..\..\BridgeSettings.cs" Link="BridgeSettings.cs" />
+    <Compile Include="..\..\BridgeInstanceIdentity.cs" Link="BridgeInstanceIdentity.cs" />
+    <Compile Include="..\..\BridgeDeviceState.cs" Link="BridgeDeviceState.cs" />
+    <Compile Include="..\..\FirmwareModeControl.cs" Link="FirmwareModeControl.cs" />
+    <Compile Include="..\..\WirelessTransportContract.cs" Link="WirelessTransportContract.cs" />
+  </ItemGroup>
+</Project>

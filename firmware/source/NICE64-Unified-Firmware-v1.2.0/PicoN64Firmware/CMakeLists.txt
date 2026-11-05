@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.13)
 
 include($ENV{PICO_SDK_PATH}/external/pico_sdk_import.cmake)
 
-project(pico_n64_controller_bridge VERSION 1.2.0 LANGUAGES C CXX ASM)
+project(pico_n64_controller_bridge VERSION 1.3.0 LANGUAGES C CXX ASM)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 set(NICE64_TRANSFER_ROM_FLASH_OFFSET_BYTES 1048576)
@@ -17,9 +17,14 @@ add_executable(pico_n64_controller_bridge
     src/control_plane.c
     src/core_transport.c
     src/controller_state.c
+    src/keyboard_mouse_service.c
+    src/keyboard_state.c
+    src/mobile_input_protocol.c
     src/joybus.c
     src/n64_accessory.c
     src/n64_controller.c
+    src/n64_keyboard.c
+    src/n64_mouse.c
     src/nice64_line_framer.c
     src/nice64_latest_state.c
     src/nice64_network_rudp_adapter.c
@@ -30,6 +35,8 @@ add_executable(pico_n64_controller_bridge
     src/nice64_tcp_service.c
     src/nice64_udp_service.c
     src/nice64_usb_transport.c
+    src/pointer_state.c
+    src/randnet_keymap.c
     src/role_manager.c
     src/standalone_diagnostics.c
     src/transfer_flash_transaction.c
