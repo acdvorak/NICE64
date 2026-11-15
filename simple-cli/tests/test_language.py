@@ -66,6 +66,43 @@ class LanguageTests(unittest.TestCase):
         command, = self.parse("hold " + " + ".join(names))
         self.assertEqual(command.inputs.buttons, set(names))
 
+    def test_directional_aliases_normalize_for_each_input_command(self):
+        directions = (("up", (0, 80)), ("down", (0, -80)),
+                      ("left", (-80, 0)), ("right", (80, 0)))
+        for prefix in ("d", "c", "stick"):
+            for direction, coordinates in directions:
+                expected = (Inputs(stick=coordinates) if prefix == "stick" else
+                            Inputs(frozenset({prefix.upper() + direction.title()})))
+                for alias in (f"{prefix}-{direction}", f"{prefix}-{direction[0]}",
+                              f"{prefix}{direction[0]}"):
+                    for spelling in (alias, alias.upper(), alias.title()):
+                        for verb in ("press", "hold", "release"):
+                            with self.subTest(verb=verb, spelling=spelling):
+                                command, = self.parse(f"{verb} {spelling}")
+                                self.assertEqual(command.action, verb)
+                                self.assertEqual(command.inputs, expected)
+
+    def test_directional_aliases_combine_with_other_inputs(self):
+        for verb in ("press", "hold", "release"):
+            with self.subTest(verb=verb):
+                command, = self.parse(f"{verb} A + d-up + DR + c-l + cd + Stick-R")
+                self.assertEqual(command.inputs,
+                                 Inputs(frozenset({"A", "DUp", "DRight", "CLeft", "CDown"}),
+                                        (80, 0)))
+
+    def test_directional_aliases_do_not_allow_multiple_stick_inputs(self):
+        for verb in ("press", "hold", "release"):
+            for inputs in ("stick-u + stickright", "stick-left + stickr",
+                           "Stick(0,0) + stick-d", "stickup + stick-u"):
+                with self.subTest(verb=verb, inputs=inputs):
+                    with self.assertRaisesRegex(ScriptError, "only one stick specification"):
+                        self.parse(f"{verb} {inputs}")
+
+    def test_other_directional_spellings_are_rejected(self):
+        for name in ("d_up", "d--up", "c-upright", "stick--u", "stick_u"):
+            with self.subTest(name=name), self.assertRaises(ScriptError):
+                self.parse(f"press {name}")
+
     def test_release_semantics_are_distinguished(self):
         commands = self.parse("release all; release A + StickUp; hold Z")
         self.assertEqual([command.action for command in commands], ["release_all", "release", "hold"])

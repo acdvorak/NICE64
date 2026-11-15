@@ -66,9 +66,31 @@ def argument_parser() -> argparse.ArgumentParser:
         description="Control a NICE64 Controller over USB serial with .n64script commands.",
         epilog=("Examples: nice64.py 'press A; press B'\n"
                 "          nice64.py run example.n64script\n"
-                "Or pipe commands on stdin. The Bridge must be disconnected.\n"
-                "Language: press INPUTS [for TIME] [pause TIME], hold INPUTS,\n"
-                "release INPUTS|all, wait [TIME], run PATH. TIME requires ms or s."),
+                "Or pipe commands on stdin. The Bridge must be disconnected.\n\n"
+                "Verbs:\n"
+                "  press INPUTS [for TIME] [pause TIME]\n"
+                "  hold INPUTS\n"
+                "  release INPUTS|all\n"
+                "  wait [TIME]\n"
+                "  run PATH\n\n"
+                "Buttons:\n"
+                "  A B Z L R Start\n"
+                "  DUp    (aliases: d-up, d-u, du)\n"
+                "  DDown  (aliases: d-down, d-d, dd)\n"
+                "  DLeft  (aliases: d-left, d-l, dl)\n"
+                "  DRight (aliases: d-right, d-r, dr)\n"
+                "  CUp    (aliases: c-up, c-u, cu)\n"
+                "  CDown  (aliases: c-down, c-d, cd)\n"
+                "  CLeft  (aliases: c-left, c-l, cl)\n"
+                "  CRight (aliases: c-right, c-r, cr)\n\n"
+                "Stick inputs:\n"
+                "  StickUp    (aliases: stick-up, stick-u, sticku)\n"
+                "  StickDown  (aliases: stick-down, stick-d, stickd)\n"
+                "  StickLeft  (aliases: stick-left, stick-l, stickl)\n"
+                "  StickRight (aliases: stick-right, stick-r, stickr)\n"
+                "  Stick(x,y) (percentages from -100 through 100)\n\n"
+                "Verbs and input names are case-insensitive. Join inputs with +.\n"
+                "TIME requires ms or s. PATH must name a .n64script file."),
         formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--port", help="USB serial port (default: last NICE64 port, then auto-detect), e.g. /dev/cu.usbmodemXXXX or COM3")
     parser.add_argument("--baud", "--baudrate", dest="baudrate", type=positive_integer,

@@ -50,10 +50,17 @@ _DIRECTIONS = {
     "stickup": (0, 80), "stickdown": (0, -80),
     "stickleft": (-80, 0), "stickright": (80, 0),
 }
+_INPUT_ALIASES = {
+    alias: prefix + direction
+    for prefix in ("d", "c", "stick")
+    for direction in ("up", "down", "left", "right")
+    for alias in (f"{prefix}-{direction}", f"{prefix}-{direction[0]}",
+                  f"{prefix}{direction[0]}")
+}
 _NUMBER = r"(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?"
 _SIGNED_NUMBER = re.compile(r"[+-]?" + _NUMBER)
 _DURATION = re.compile(r"(" + _NUMBER + r")\s*(ms|s)\b", re.IGNORECASE)
-_WORD = re.compile(r"[A-Za-z][A-Za-z0-9_]*")
+_WORD = re.compile(r"[A-Za-z][A-Za-z0-9_-]*")
 
 
 def _location(source: str, text: str, offset: int) -> Location:
@@ -147,6 +154,7 @@ class _Cursor:
             self.whitespace()
             start = self.pos
             name = self.word("an input name")
+            name = _INPUT_ALIASES.get(name, name)
             if name in _BUTTONS:
                 buttons.add(_BUTTONS[name])
             elif name in _DIRECTIONS or name == "stick":

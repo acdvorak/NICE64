@@ -108,6 +108,12 @@ StickUp StickDown StickLeft StickRight
 Stick(x,y)
 ```
 
+Directional inputs also accept a hyphen between the prefix (`d`, `c`, or `stick`)
+and direction, and the direction may be shortened to `u`, `d`, `l`, or `r`.
+For example, `d-up`, `d-u`, and `du` mean `DUp`; `c-left`, `c-l`, and `cl` mean
+`CLeft`; `stick-down`, `stick-d`, and `stickd` mean `StickDown`. These aliases
+work for all four directions and are case-insensitive. Run `--help` for the full list.
+
 Whitespace around `+` and the coordinate comma is optional:
 
 ```text
