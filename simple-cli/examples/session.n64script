@@ -1,0 +1,6 @@
+# Includes resolve relative to this file and preserve persistent holds.
+hold Z
+run "menu.n64script"
+press A + StickUp for 250ms pause 0ms
+run 'held-stick.n64script'
+release all

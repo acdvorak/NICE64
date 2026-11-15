@@ -1,0 +1,139 @@
+#!/usr/bin/env python3
+"""Standalone NICE64 controller scripting CLI; see README.md for the language."""
+
+import argparse
+import os
+from pathlib import Path
+import sys
+from typing import Sequence, TextIO
+
+from controller import Progress, execute_program
+from language import Command, Location, ScriptError, expand_commands, parse_fragment
+from transport import Nice64Connection, TransportError, detect_port
+
+
+class InputError(Exception):
+    """Missing or conflicting command input."""
+
+
+def positive_integer(value: str) -> int:
+    try:
+        number = int(value)
+    except ValueError as error:
+        raise argparse.ArgumentTypeError("must be a positive integer") from error
+    if number <= 0:
+        raise argparse.ArgumentTypeError("must be a positive integer")
+    return number
+
+
+def argument_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description="Control a NICE64 Controller over USB serial with .n64script commands.",
+        epilog=("Examples: nice64.py 'press A; press B'\n"
+                "          nice64.py run example.n64script\n"
+                "Or pipe commands on stdin. The Bridge must be disconnected.\n"
+                "Language: press INPUTS [for TIME] [pause TIME], hold INPUTS,\n"
+                "release INPUTS|all, wait [TIME], run PATH. TIME requires ms or s."),
+        formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--port", help="USB serial port (default: auto-detect NICE64), e.g. /dev/cu.usbmodemXXXX or COM3")
+    parser.add_argument("--baud", "--baudrate", dest="baudrate", type=positive_integer,
+                        default=115200, help="serial baud rate (default: 115200)")
+    parser.add_argument("commands", nargs="*", metavar="COMMAND",
+                        help="ordered command fragments, or run PATH; alternatively use stdin")
+    return parser
+
+
+def protect_literal_run_paths(argv: Sequence[str]) -> list[str]:
+    """Keep argparse from treating a literal run filename as an option.
+
+    Prefixing an option-looking relative path with ./ preserves its filesystem
+    meaning. Option values themselves (for example --port run) are not commands.
+    """
+    protected = list(argv)
+    index = 0
+    while index < len(protected):
+        argument = protected[index]
+        if argument == "--":
+            break  # argparse already treats everything remaining as positional.
+        if argument in ("--port", "--baud", "--baudrate"):
+            index += 2
+        elif argument.strip().casefold() == "run" and index + 1 < len(protected):
+            if protected[index + 1].startswith("-"):
+                protected[index + 1] = "./" + protected[index + 1]
+            index += 2
+        else:
+            index += 1
+    return protected
+
+
+def read_program(fragments: Sequence[str], stdin: TextIO, base_dir: Path) -> list[Command]:
+    # A terminal is never read here: arguments must not wait on interactive stdin.
+    text = "" if stdin.isatty() else stdin.read()
+    if fragments and text:
+        raise InputError("command arguments cannot be combined with nonempty stdin; choose one input source")
+    commands: list[Command] = []
+    if fragments:
+        index = 0
+        while index < len(fragments):
+            fragment = fragments[index]
+            source = f"CLI argument {index + 1}"
+            if fragment.strip().casefold() == "run":
+                if index + 1 >= len(fragments):
+                    raise InputError(f"{source}:1:1: run requires a .n64script path")
+                # This form deliberately bypasses script tokenization of filenames.
+                commands.append(Command("run", Location(source, 1, 1),
+                                        path=Path(fragments[index + 1])))
+                index += 2
+            else:
+                commands.extend(parse_fragment(fragment, source))
+                index += 1
+    elif text:
+        commands = parse_fragment(text, "stdin")
+    else:
+        raise InputError("no command input supplied; pass command arguments or pipe a script on stdin")
+    expanded = expand_commands(commands, base_dir)
+    if not expanded:
+        raise InputError("input contains no commands")
+    return expanded
+
+
+def main(argv: Sequence[str] | None = None, *, stdin: TextIO | None = None,
+         stdout: TextIO | None = None, stderr: TextIO | None = None) -> int:
+    stdin = sys.stdin if stdin is None else stdin
+    stdout = sys.stdout if stdout is None else stdout
+    stderr = sys.stderr if stderr is None else stderr
+    parser = argument_parser()
+    arguments = sys.argv[1:] if argv is None else argv
+    args = parser.parse_intermixed_args(protect_literal_run_paths(arguments))
+    try:
+        commands = read_program(args.commands, stdin, Path.cwd())
+        progress = Progress(stdout)
+        progress.emit("VALIDATED", "complete program and all included files")
+        port = args.port
+        if port is None:
+            progress.emit("DETECT", "probing serial ports for NICE64 identity")
+            port = detect_port(args.baudrate)
+            progress.emit("PORT", f"{port} (auto-detected)")
+        else:
+            progress.emit("PORT", f"{port} (explicit --port)")
+        connection = Nice64Connection(port, args.baudrate)
+        execute_program(commands, connection, progress, stderr)
+        return 0
+    except KeyboardInterrupt:
+        print("error: interrupted; attempted neutral cleanup for initialized controller", file=stderr, flush=True)
+        return 130
+    except (InputError, ScriptError, TransportError, OSError, UnicodeError) as error:
+        print(f"error: {error}", file=stderr, flush=True)
+        return 2 if isinstance(error, (InputError, ScriptError)) else 1
+
+
+if __name__ == "__main__":
+    status = main()
+    # Avoid a second broken-pipe exception during the interpreter's final flush.
+    try:
+        sys.stdout.flush()
+    except BrokenPipeError:
+        with open(os.devnull, "w") as sink:
+            os.dup2(sink.fileno(), sys.stdout.fileno())
+        status = status or 1
+    raise SystemExit(status)

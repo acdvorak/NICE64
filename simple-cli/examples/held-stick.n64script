@@ -1,0 +1,7 @@
+# Z remains held across the temporary A + stick press and its pause.
+hold Z
+press A + Stick(50, 75) for 500ms pause 0.25s
+hold StickLeft
+wait 2s
+release StickLeft
+release Z
