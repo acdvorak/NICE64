@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-cd -- "$(dirname "${BASH_SOURCE[0]}")" || exit 1
+cd -- "/Users/acdvorak/dev/nice64/simple-cli" || exit 1
 
 source .venv/bin/activate
 

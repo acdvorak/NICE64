@@ -105,7 +105,8 @@ def read_program(fragments: Sequence[str], stdin: TextIO, base_dir: Path) -> lis
     # A terminal is never read here: arguments must not wait on interactive stdin.
     text = "" if stdin.isatty() else stdin.read()
     if fragments and text:
-        raise InputError("command arguments cannot be combined with nonempty stdin; choose one input source")
+        raise InputError("command arguments cannot be combined with nonempty stdin; choose one input source. "
+                         "Pass --help for usage information.")
     commands: list[Command] = []
     if fragments:
         index = 0
@@ -114,7 +115,8 @@ def read_program(fragments: Sequence[str], stdin: TextIO, base_dir: Path) -> lis
             source = f"CLI argument {index + 1}"
             if fragment.strip().casefold() == "run":
                 if index + 1 >= len(fragments):
-                    raise InputError(f"{source}:1:1: run requires a .n64script path")
+                    raise InputError(f"{source}:1:1: run requires a .n64script path. "
+                                     "Pass --help for usage information.")
                 # This form deliberately bypasses script tokenization of filenames.
                 commands.append(Command("run", Location(source, 1, 1),
                                         path=Path(fragments[index + 1])))
@@ -125,10 +127,11 @@ def read_program(fragments: Sequence[str], stdin: TextIO, base_dir: Path) -> lis
     elif text:
         commands = parse_fragment(text, "stdin")
     else:
-        raise InputError("no command input supplied; pass command arguments or pipe a script on stdin")
+        raise InputError("no command input supplied; pass command arguments or pipe a script on stdin. "
+                         "Pass --help for usage information.")
     expanded = expand_commands(commands, base_dir)
     if not expanded:
-        raise InputError("input contains no commands")
+        raise InputError("input contains no commands. Pass --help for usage information.")
     return expanded
 
 
