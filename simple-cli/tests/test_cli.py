@@ -19,10 +19,18 @@ class InteractiveInput(io.StringIO):
 
 
 class CliTests(unittest.TestCase):
+    def setUp(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        cache_patch = patch("nice64.PORT_CACHE_PATH", Path(directory.name) / ".last-port")
+        cache_patch.start()
+        self.addCleanup(cache_patch.stop)
+
     def test_auto_detection_for_stdin_and_command_arguments(self):
         for argv, text in ((["hold A", "--baud", "57600"], ""),
                            (["--baud", "57600"], "hold A")):
             with self.subTest(argv=argv):
+                nice64.PORT_CACHE_PATH.unlink(missing_ok=True)
                 stdout, stderr = io.StringIO(), io.StringIO()
                 connection = FakeConnection()
                 with patch("nice64.detect_port", return_value="detected-port") as detect, \
@@ -30,7 +38,8 @@ class CliTests(unittest.TestCase):
                     result = nice64.main(argv, stdin=io.StringIO(text), stdout=stdout, stderr=stderr)
                 self.assertEqual(result, 0, stderr.getvalue())
                 detect.assert_called_once_with(57600)
-                factory.assert_called_once_with("detected-port", 57600)
+                factory.assert_called_once_with("detected-port", 57600,
+                                               on_identified=nice64.remember_port)
                 self.assertIn("PORT detected-port (auto-detected)", stdout.getvalue())
                 self.assertIn("80000000", connection.states)
 
@@ -41,7 +50,8 @@ class CliTests(unittest.TestCase):
                                  stdout=io.StringIO(), stderr=io.StringIO())
         self.assertEqual(result, 0)
         detect.assert_not_called()
-        factory.assert_called_once_with("chosen-port", 115200)
+        factory.assert_called_once_with("chosen-port", 115200,
+                                       on_identified=nice64.remember_port)
 
     def test_validation_precedes_auto_detection(self):
         stderr = io.StringIO()
@@ -116,7 +126,8 @@ class CliTests(unittest.TestCase):
                                           "--baud", "57600", "release all"],
                                          stdin=io.StringIO(""), stdout=io.StringIO(), stderr=io.StringIO())
                 self.assertEqual(result, 0)
-                factory.assert_called_once_with("correct-port", 57600)
+                factory.assert_called_once_with("correct-port", 57600,
+                                               on_identified=nice64.remember_port)
                 self.assertIn("80000000", connection.states)
 
     def test_option_value_named_run_is_not_a_command(self):
@@ -157,7 +168,8 @@ class CliTests(unittest.TestCase):
                                       "run", str(script), "press B", "release Z"],
                                      stdin=InteractiveInput(), stdout=stdout, stderr=stderr)
             self.assertEqual(result, 0, stderr.getvalue())
-            factory.assert_called_once_with("mock", 57600)
+            factory.assert_called_once_with("mock", 57600,
+                                           on_identified=nice64.remember_port)
             self.assertEqual(connection.states, [
                 "00000000", "20000000", "A0000000", "20000000",
                 "60000000", "20000000", "00000000", "00000000"])

@@ -12,6 +12,41 @@ from language import Command, Location, ScriptError, expand_commands, parse_frag
 from transport import Nice64Connection, TransportError, detect_port
 
 
+PORT_CACHE_PATH = Path(__file__).resolve().with_name(".last-port")
+
+
+def read_cached_port() -> str | None:
+    try:
+        return PORT_CACHE_PATH.read_text(encoding="utf-8").strip() or None
+    except (OSError, UnicodeError):
+        return None
+
+
+def remember_port(port: str) -> None:
+    try:
+        PORT_CACHE_PATH.write_text(port + "\n", encoding="utf-8")
+    except (OSError, UnicodeError):
+        pass  # An optional speed-up must not prevent controller use.
+
+
+def cached_port_available(port: str, baudrate: int) -> bool:
+    """Check only the cached device, without changing controller state."""
+    connection = Nice64Connection(port, baudrate)
+    identified = False
+    try:
+        connection.open()
+        connection.identify()
+        identified = True
+    except TransportError:
+        pass
+    finally:
+        try:
+            connection.close()
+        except TransportError:
+            identified = False
+    return identified
+
+
 class InputError(Exception):
     """Missing or conflicting command input."""
 
@@ -35,7 +70,7 @@ def argument_parser() -> argparse.ArgumentParser:
                 "Language: press INPUTS [for TIME] [pause TIME], hold INPUTS,\n"
                 "release INPUTS|all, wait [TIME], run PATH. TIME requires ms or s."),
         formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--port", help="USB serial port (default: auto-detect NICE64), e.g. /dev/cu.usbmodemXXXX or COM3")
+    parser.add_argument("--port", help="USB serial port (default: last NICE64 port, then auto-detect), e.g. /dev/cu.usbmodemXXXX or COM3")
     parser.add_argument("--baud", "--baudrate", dest="baudrate", type=positive_integer,
                         default=115200, help="serial baud rate (default: 115200)")
     parser.add_argument("commands", nargs="*", metavar="COMMAND",
@@ -111,12 +146,19 @@ def main(argv: Sequence[str] | None = None, *, stdin: TextIO | None = None,
         progress.emit("VALIDATED", "complete program and all included files")
         port = args.port
         if port is None:
-            progress.emit("DETECT", "probing serial ports for NICE64 identity")
-            port = detect_port(args.baudrate)
-            progress.emit("PORT", f"{port} (auto-detected)")
+            cached = read_cached_port()
+            if cached is not None:
+                progress.emit("PORT", f"{cached} (cached; checking NICE64 identity)")
+            if cached is not None and cached_port_available(cached, args.baudrate):
+                port = cached
+            else:
+                progress.emit("DETECT", "probing serial ports for NICE64 identity")
+                port = detect_port(args.baudrate)
+                remember_port(port)
+                progress.emit("PORT", f"{port} (auto-detected)")
         else:
             progress.emit("PORT", f"{port} (explicit --port)")
-        connection = Nice64Connection(port, args.baudrate)
+        connection = Nice64Connection(port, args.baudrate, on_identified=remember_port)
         execute_program(commands, connection, progress, stderr)
         return 0
     except KeyboardInterrupt:

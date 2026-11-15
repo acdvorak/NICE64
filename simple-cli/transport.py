@@ -19,15 +19,18 @@ class Nice64Connection:
     later conflicts retain cleanup eligibility for one neutral attempt; the
     firmware will reject that attempt while another transport still owns it.
     No state is sent to an unidentified device or another personality.
+    ``on_identified`` receives the verified port before personality checks.
     """
 
-    def __init__(self, port, baudrate=115200, timeout=1.0, serial_factory=None):
+    def __init__(self, port, baudrate=115200, timeout=1.0, serial_factory=None,
+                 *, on_identified=None):
         if not math.isfinite(timeout) or timeout <= 0:
             raise ValueError("serial timeout must be finite and positive")
         self.port = port
         self.baudrate = baudrate
         self.timeout = timeout
         self._serial_factory = serial_factory
+        self._on_identified = on_identified
         self._serial = None
         self.controller_ready = False
         self._initialized = False
@@ -66,6 +69,8 @@ class Nice64Connection:
         identity = self._exchange("WHO")
         if not re.fullmatch(r"WHO\|NICE64\|CTRL=1\|FW=[^|\s]+", identity):
             raise TransportError(f"{self.port} did not identify as a supported NICE64: {identity!r}")
+        if self._on_identified is not None:
+            self._on_identified(self.port)
 
     def initialize(self):
         self.identify()

@@ -16,9 +16,15 @@ python -m pip install -r requirements.txt
 python nice64.py --help
 ```
 
-The serial port is auto-detected when `--port` is omitted. Discovery enumerates
-serial ports and uses bounded, read-only `WHO` probes to find NICE64 firmware;
-it does not change controller inputs or personality. macOS `/dev/tty.*` and
+The last verified NICE64 device path is saved in `.last-port` beside `nice64.py`,
+whether auto-detected or selected with `--port`. When `--port` is omitted, the
+CLI checks that cached path first and skips discovery if it still responds as
+NICE64. A missing, unreadable, or failed cached path triggers auto-detection.
+Cache-write failures do not prevent controller use. Delete `.last-port` to force
+discovery on the next invocation without `--port`.
+
+Discovery enumerates serial ports and uses bounded, read-only `WHO` probes to
+find NICE64 firmware; it does not change controller inputs or personality. macOS `/dev/tty.*` and
 `/dev/cu.*` aliases are probed once, preferring `/dev/cu.*`. If no NICE64 responds
 or multiple devices respond, the CLI reports an error; use `--port PORT` to
 select a device explicitly and bypass discovery. The selected port is logged.
