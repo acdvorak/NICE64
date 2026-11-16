@@ -47,6 +47,47 @@ class LanguageTests(unittest.TestCase):
         self.assertEqual([command.duration for command in commands], [0.1, 0, 0.25, 0.1, 2])
         self.assertEqual([command.pause for command in commands], [None, None, None, 0, 0.1])
 
+    def test_repetition_matches_explicit_commands_with_optional_spacing(self):
+        expected = self.parse("press L+R; press L+R; press L+R; press L+R")
+        for suffix in ("*4", "* 4", " *4", " * 4", "\t*\t4"):
+            with self.subTest(suffix=suffix):
+                commands = self.parse("press L+R" + suffix)
+                self.assertEqual(len(commands), 4)
+                for command, explicit in zip(commands, expected):
+                    self.assertEqual((command.action, command.inputs, command.duration, command.pause),
+                                     (explicit.action, explicit.inputs, explicit.duration, explicit.pause))
+                    self.assertEqual(command.location, Location("CLI argument 1", 1, 1))
+
+    def test_repetition_applies_to_each_command_and_preserves_timing(self):
+        cases = ("press A for 250ms pause 0ms", "press A for 250ms",
+                 "press A pause 50ms", "hold Z+StickUp", "release Z",
+                 "release all", "wait", "wait 2s", 'run "Case * 3.n64script"')
+        for text in cases:
+            with self.subTest(text=text):
+                command, = self.parse(text)
+                self.assertEqual(self.parse(text + " * 3"), [command] * 3)
+                self.assertEqual(self.parse(text + " *1"), [command])
+
+    def test_repetition_respects_separators_comments_and_source_locations(self):
+        commands = self.parse("hold Z; press A *2 # *99; press B\n release all*2; wait")
+        self.assertEqual([command.action for command in commands],
+                         ["hold", "press", "press", "release_all", "release_all", "wait"])
+        self.assertEqual([command.location for command in commands], [
+            Location("CLI argument 1", 1, 1), Location("CLI argument 1", 1, 9),
+            Location("CLI argument 1", 1, 9), Location("CLI argument 1", 2, 2),
+            Location("CLI argument 1", 2, 2), Location("CLI argument 1", 2, 17)])
+
+    def test_invalid_repetition_is_rejected_with_source_location(self):
+        for suffix in ("*", "*0", "*-1", "*+2", "*1.5", "*NaN", "*2e3",
+                       "*2extra", "*2 *3", "*2 for 1s"):
+            with self.subTest(suffix=suffix), self.assertRaises(ScriptError) as error:
+                parse_fragment("# heading\npress L+R " + suffix, "input.n64script")
+            self.assertEqual(error.exception.location.source, "input.n64script")
+            self.assertEqual(error.exception.location.line, 2)
+        with self.assertRaises(ScriptError) as error:
+            parse_fragment("# heading\npress L+R * 0", "input.n64script")
+        self.assertEqual(error.exception.location, Location("input.n64script", 2, 13))
+
     def test_numeric_stick_scaling_and_symmetric_rounding(self):
         commands = self.parse("press Stick(50, 75); press Stick(-0.625,0.625); hold Stick(100, -100)")
         self.assertEqual([command.inputs.stick for command in commands],
@@ -165,6 +206,21 @@ class IncludeTests(unittest.TestCase):
         self.assertEqual([command.action for command in commands],
                          ["run_enter", "press", "run_exit"] * 2)
         self.assertEqual(commands[0].path, path)
+
+    def test_repetition_in_files_and_on_run_commands_expands_inline(self):
+        path = self.write("child/Case * 3.n64script", "press A *2; wait *2")
+        self.write("outer.n64script", 'run "child/Case * 3.n64script" *2')
+        commands = self.compile("hold Z; run outer.n64script *2; release all")
+        inner_actions = ["run_enter", "press", "press", "wait", "wait", "run_exit"]
+        self.assertEqual([command.action for command in commands],
+                         ["hold"] + (["run_enter"] + inner_actions * 2 + ["run_exit"]) * 2
+                         + ["release_all"])
+        self.assertEqual([command.path for command in commands if command.path == path], [path] * 8)
+
+    def test_repeated_run_still_rejects_active_cycles(self):
+        self.write("cycle.n64script", "run cycle.n64script *2")
+        with self.assertRaisesRegex(ScriptError, "active include cycle"):
+            self.compile("run cycle.n64script *2")
 
     def test_absolute_and_literal_paths_preserve_punctuation(self):
         path = self.write("Case; # 'literal'.n64script", "press A")

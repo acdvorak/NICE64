@@ -63,6 +63,23 @@ class CliTests(unittest.TestCase):
         detect.assert_not_called()
         factory.assert_not_called()
 
+    def test_repetition_from_arguments_and_stdin(self):
+        for fragments, text in ((["press L+R * 4"], ""), ([], "press L+R *4")):
+            with self.subTest(fragments=fragments):
+                commands = nice64.read_program(fragments, io.StringIO(text), Path.cwd())
+                self.assertEqual(len(commands), 4)
+                self.assertTrue(all(command.inputs.buttons == {"L", "R"} for command in commands))
+
+    def test_invalid_repetition_prevents_connection_and_detection(self):
+        stderr = io.StringIO()
+        with patch("nice64.detect_port") as detect, patch("nice64.Nice64Connection") as factory:
+            result = nice64.main(["press A; press L+R *0"], stdin=io.StringIO(""),
+                                 stdout=io.StringIO(), stderr=stderr)
+        self.assertEqual(result, 2)
+        self.assertIn("positive integer", stderr.getvalue())
+        detect.assert_not_called()
+        factory.assert_not_called()
+
     def test_detection_failure_does_not_execute_commands(self):
         stderr = io.StringIO()
         with patch("nice64.detect_port", side_effect=TransportError("multiple NICE64 devices; use --port")), \

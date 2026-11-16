@@ -78,20 +78,29 @@ executed through a shell.
 ## Language
 
 ```text
-press INPUTS [for TIME] [pause TIME]
-hold INPUTS
-release INPUTS
-release all
-wait [TIME]
-run PATH
+press INPUTS [for TIME] [pause TIME] [*N]
+hold INPUTS [*N]
+release INPUTS [*N]
+release all [*N]
+wait [TIME] [*N]
+run PATH [*N]
 
 INPUTS = INPUT [+ INPUT ...]
 TIME   = nonnegative finite number followed by ms or s
+N      = positive integer total execution count
 ```
 
 Commands, keywords, input names, and duration units are case-insensitive. Paths
 retain their exact case. Unknown commands, unknown inputs, extra tokens, and
 malformed syntax are errors. There are no variables, loops, or expressions.
+
+Append `*N` to execute a command N times. Spaces around `*` are optional:
+`press L+R * 4` and `press L+R*4` both mean
+`press L+R; press L+R; press L+R; press L+R`. Each press includes its full
+duration and pause, including the 100ms defaults. The suffix applies to any
+command, including `run`. Separate an unquoted `run` path from the suffix with
+whitespace, as in `run file.n64script *4`. Stars inside quoted paths stay
+literal, and the two-argument CLI form `run PATH` still treats PATH literally.
 
 Buttons:
 

@@ -99,9 +99,31 @@ class _Cursor:
         self.whitespace()
         return self.pos == len(self.text)
 
+    def arguments_finished(self) -> bool:
+        return self.finished() or self.text[self.pos] == "*"
+
     def finish(self) -> None:
         if not self.finished():
             self.fail(f"unexpected trailing text: {self.text[self.pos:]!r}")
+
+    def repetitions(self) -> int:
+        self.whitespace()
+        if self.pos == len(self.text) or self.text[self.pos] != "*":
+            return 1
+        self.pos += 1
+        self.whitespace()
+        start = self.pos
+        match = re.match(r"[0-9]+", self.text[start:])
+        if not match:
+            self.fail("expected a positive integer repetition count")
+        try:
+            count = int(match.group())
+        except ValueError:
+            self.fail("expected a positive integer repetition count", start)
+        if count <= 0:
+            self.fail("repetition count must be a positive integer", start)
+        self.pos += match.end()
+        return count
 
     def expect(self, character: str) -> None:
         self.whitespace()
@@ -237,39 +259,41 @@ def parse_fragment(text: str, source: str) -> list[Command]:
                 path = cursor.text[start:cursor.pos]
             if not path:
                 cursor.fail("run path must not be empty")
-            cursor.finish()
-            commands.append(Command("run", location, path=Path(path)))
+            command = Command("run", location, path=Path(path))
         elif verb == "wait":
-            duration = 0.1 if cursor.finished() else cursor.duration()
-            cursor.finish()
-            commands.append(Command("wait", location, duration=duration))
+            duration = 0.1 if cursor.arguments_finished() else cursor.duration()
+            command = Command("wait", location, duration=duration)
         elif verb in ("press", "hold", "release"):
             cursor.whitespace()
-            if verb == "release" and cursor.text[cursor.pos:].lower().strip() == "all":
-                commands.append(Command("release_all", location))
-                continue
-            inputs = cursor.inputs()
-            duration = pause = None
-            if verb == "press":
-                duration = pause = 0.1
-                if not cursor.finished():
-                    modifier_start = cursor.pos
-                    modifier = cursor.word("for or pause")
-                    if modifier == "for":
-                        duration = cursor.duration()
-                        if not cursor.finished():
-                            modifier_start = cursor.pos
-                            modifier = cursor.word("pause")
-                        else:
-                            modifier = None
-                    if modifier == "pause":
-                        pause = cursor.duration()
-                    elif modifier is not None:
-                        cursor.fail("expected for TIME followed optionally by pause TIME, or pause TIME", modifier_start)
-            cursor.finish()
-            commands.append(Command(verb, location, inputs=inputs, duration=duration, pause=pause))
+            name = _WORD.match(cursor.text, cursor.pos)
+            if verb == "release" and name and name.group().lower() == "all":
+                cursor.pos = name.end()
+                command = Command("release_all", location)
+            else:
+                inputs = cursor.inputs()
+                duration = pause = None
+                if verb == "press":
+                    duration = pause = 0.1
+                    if not cursor.arguments_finished():
+                        modifier_start = cursor.pos
+                        modifier = cursor.word("for or pause")
+                        if modifier == "for":
+                            duration = cursor.duration()
+                            if not cursor.arguments_finished():
+                                modifier_start = cursor.pos
+                                modifier = cursor.word("pause")
+                            else:
+                                modifier = None
+                        if modifier == "pause":
+                            pause = cursor.duration()
+                        elif modifier is not None:
+                            cursor.fail("expected for TIME followed optionally by pause TIME, or pause TIME", modifier_start)
+                command = Command(verb, location, inputs=inputs, duration=duration, pause=pause)
         else:
             raise ScriptError(f"unknown command {verb!r}", location)
+        repetitions = cursor.repetitions()
+        cursor.finish()
+        commands.extend([command] * repetitions)
     return commands
 
 

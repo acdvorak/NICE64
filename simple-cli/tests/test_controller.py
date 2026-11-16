@@ -89,6 +89,15 @@ class ExecutionTests(unittest.TestCase):
                          ["00000000", "80000000", "00000000", "40000000", "00000000", "00000000"])
         self.assertIn("PAUSE 0ms", output.getvalue())
 
+    def test_repeated_press_restores_held_state_and_pauses_every_time(self):
+        connection, output, clock = self.execute("hold Z; press L+R * 4; release all")
+        self.assertEqual(connection.states,
+                         ["00000000", "20000000"]
+                         + ["20300000", "20000000"] * 4
+                         + ["00000000", "00000000"])
+        self.assertEqual(clock.sleeps, [.1, .1] * 4)
+        self.assertEqual(output.getvalue().count("PRESS L+R"), 4)
+
     def test_persistent_buttons_survive_temporary_overlay(self):
         connection, _, clock = self.execute(
             "hold Z+A; press A+B; release A; wait 0s; release Z")
