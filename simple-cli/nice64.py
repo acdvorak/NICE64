@@ -1,18 +1,168 @@
 #!/usr/bin/env python3
-"""Standalone NICE64 controller scripting CLI; see README.md for the language."""
+"""NICE64 controller CLI with bounded recovery for an idle serial connection.
+
+See README.md for the command language.
+"""
 
 import argparse
 import os
 from pathlib import Path
+import re
 import sys
+import time
 from typing import Sequence, TextIO
 
 from controller import Progress, execute_program
 from language import Command, Location, ScriptError, expand_commands, parse_fragment
-from transport import Nice64Connection, TransportError, detect_port
+from transport import Nice64Connection as _Nice64Connection, TransportError
 
 
 PORT_CACHE_PATH = Path(__file__).resolve().with_name(".last-port")
+IDENTITY_TIMEOUT = 5.0
+IDENTITY_RETRY_INTERVAL = 1.0
+IDENTITY_PATTERN = re.compile(r"WHO\|NICE64\|CTRL=1\|FW=[^|\s]+")
+STARTUP_MESSAGES = (
+    "Pico N64 RC-reference controller bridge starting in MODE SERIAL",
+    "Pico N64 standalone Network Pak starting",
+    "Pico N64 standalone Keyboard/Mouse starting:",
+)
+
+
+class Nice64Connection(_Nice64Connection):
+    """Retry only identity queries, keeping the port open while USB settles."""
+
+    def _exchange(self, command):
+        connection = self._serial
+        if connection is None:
+            raise TransportError("serial connection is not open")
+        identifying = command == "WHO"
+        duration = max(IDENTITY_TIMEOUT, self.timeout) if identifying else self.timeout
+        deadline = time.monotonic() + duration
+        next_probe = 0.0
+        sent = False
+        line = bytearray()
+        last_unexpected = None
+        payload = (command + "\n").encode("ascii")
+        try:
+            while True:
+                now = time.monotonic()
+                remaining = deadline - now
+                if remaining <= 0:
+                    detail = (f"; last response: {last_unexpected!r}"
+                              if last_unexpected is not None else "")
+                    raise TransportError(
+                        f"timed out waiting for NICE64 reply to {command!r}{detail}"
+                    )
+                if not sent or (identifying and now >= next_probe):
+                    # Repeating WHO is read-only. Never replay MODE or N64 after
+                    # a timeout: the device may already have applied the command.
+                    connection.write_timeout = min(self.timeout, remaining)
+                    written = connection.write(payload)
+                    if written != len(payload):
+                        raise TransportError(f"incomplete serial write for {command!r}")
+                    sent = True
+                    next_probe = time.monotonic() + IDENTITY_RETRY_INTERVAL
+
+                now = time.monotonic()
+                remaining = deadline - now
+                if identifying:
+                    remaining = min(remaining, next_probe - now)
+                if remaining <= 0:
+                    continue
+                connection.timeout = remaining
+                chunk = connection.read(1)
+                if not chunk:
+                    if identifying:
+                        continue  # The next probe shares the original deadline.
+                    raise TransportError(f"timed out waiting for NICE64 reply to {command!r}")
+                if chunk != b"\n":
+                    line.extend(chunk)
+                    if len(line) > 1024:
+                        raise TransportError(f"oversized NICE64 response to {command!r}")
+                    continue
+                reply = line.rstrip(b"\r").decode("ascii")
+                line.clear()
+                if not reply:
+                    continue
+                if reply.startswith("NICE64|BUSY"):
+                    if not self._initialized:
+                        self.controller_ready = False
+                    raise TransportError(
+                        f"NICE64 transport ownership conflict: {reply}; "
+                        "disconnect the Bridge/TCP owner before using this tool"
+                    )
+                if reply.upper().startswith("ERR") or "|ERR|" in reply.upper():
+                    raise TransportError(f"NICE64 rejected {command!r}: {reply}")
+                if identifying:
+                    if IDENTITY_PATTERN.fullmatch(reply) or reply.startswith("WHO|"):
+                        # The inherited identify() rejects unsupported identities.
+                        return reply
+                    # Startup text can arrive after open() discards old input.
+                    last_unexpected = reply
+                    continue
+                if IDENTITY_PATTERN.fullmatch(reply) or reply.startswith(STARTUP_MESSAGES):
+                    # An earlier WHO may answer after its retry succeeded. Read
+                    # past it without resending the current command or extending
+                    # its deadline. Other unexpected replies still fail normally.
+                    continue
+                return reply
+        except TransportError:
+            raise
+        except Exception as exc:
+            raise TransportError(f"serial I/O failed during {command!r}: {exc}") from exc
+
+
+def detect_port(baudrate=115200, *, port_enumerator=None, serial_factory=None):
+    """Find a unique NICE64 using identity-only probes on every candidate."""
+    if port_enumerator is None:
+        try:
+            from serial.tools import list_ports
+        except ImportError as exc:
+            raise TransportError(
+                "pyserial is required; install with python3 -m pip install -r requirements.txt"
+            ) from exc
+        port_enumerator = list_ports.comports
+    try:
+        ports = {port.device for port in port_enumerator()}
+    except Exception as exc:
+        raise TransportError(f"cannot enumerate serial ports: {exc}; specify --port PORT") from exc
+    # Prefer the macOS callout path when both aliases name the same device.
+    ports = sorted(port for port in ports
+                   if not (port.startswith("/dev/tty.")
+                           and "/dev/cu." + port[len("/dev/tty."):] in ports))
+    if not ports:
+        raise TransportError("no serial ports found; connect NICE64 over USB or specify --port PORT")
+
+    matches = []
+    failures = []
+    for port in ports:
+        connection = Nice64Connection(port, baudrate, serial_factory=serial_factory)
+        identified = False
+        try:
+            connection.open()
+            connection.identify()
+            identified = True
+        except TransportError as exc:
+            failures.append(f"{port}: {exc}")
+        finally:
+            try:
+                connection.close()
+            except TransportError as exc:
+                identified = False
+                failures.append(f"{port}: {exc}")
+        if identified:
+            matches.append(port)
+    if len(matches) > 1:
+        raise TransportError(
+            f"multiple NICE64 devices detected: {', '.join(matches)}; select one with --port PORT"
+        )
+    if not matches:
+        detail = "; ".join(failures)
+        raise TransportError(
+            "no NICE64 device detected; connect it over USB and disconnect the Bridge, "
+            f"or specify --port PORT. Probes: {detail}"
+        )
+    return matches[0]
 
 
 def read_cached_port() -> str | None:
